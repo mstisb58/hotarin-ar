@@ -1,17 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hotarin AR - Final Version</title>
+    <title>Hotarin AR - Camera Edition</title>
 
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
 
     <style>
-        body { margin: 0; font-family: sans-serif; background-color: #000; }
+        body { margin: 0; font-family: sans-serif; background-color: #000; overflow: hidden; }
+
+        /* ヘッダー */
         #header {
             position: fixed; top: 0; left: 0; width: 100%; height: 80px;
             background: white; color: black; display: flex;
@@ -19,10 +21,14 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         #header p { margin: 0; font-weight: bold; font-size: 1.1rem; }
+
+        /* AR表示領域の調整（ヘッダー分下げる） */
         video { top: 80px !important; height: calc(100% - 80px) !important; object-fit: cover; }
         .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
+
+        /* スキャン中オーバーレイ */
         #scanning-overlay {
-            position: absolute; top: 100px; left: 0; width: 100%; height: 50px;
+            position: absolute; top: 120px; left: 0; width: 100%; height: 50px;
             display: flex; align-items: center; justify-content: center;
             pointer-events: none; z-index: 999;
         }
@@ -30,47 +36,57 @@
             background: rgba(255, 255, 255, 0.7); padding: 10px 20px;
             border-radius: 25px; color: #333; font-size: 0.9rem;
         }
-        .hidden { display: none !important; }
-        /* 撮影ボタンのスタイル */
+
+        /* 撮影ボタン */
         #capture-btn {
             position: fixed;
-            bottom: 30px;
+            bottom: 40px;
             left: 50%;
             transform: translateX(-50%);
-            width: 70px;
-            height: 70px;
-            background: rgba(255, 255, 255, 0.8);
-            border: 5px solid #fff;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 6px solid #fff;
             border-radius: 50%;
             z-index: 1001;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
+        #capture-btn::after {
+            content: "";
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid #333;
+        }
+        #capture-btn:active { background: #bbb; }
 
-        #capture-btn:active {
-            background: #ccc;
-        }
+        .hidden { display: none !important; }
     </style>
 
     <script>
+        // ほたりんの浮遊・回転ロジック
         AFRAME.registerComponent('hotarin-logic', {
             schema: {
                 radius: { type: 'number', default: 1.0 },
-                height: { type: 'number', default: 0.5 },
-                orbitSpeed: { type: 'number', default: 0.001 },
-                yFloat: { type: 'number', default: 0.1 },
-                xOffset: { type: 'number', default: 0 },
-                zOffset: { type: 'number', default: 0 },
+                height: { type: 'number', default: 0.6 },
+                orbitSpeed: { type: 'number', default: 0.0008 },
+                yFloat: { type: 'number', default: 0.08 },
                 manualRot: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
                 modelScale: { type: 'number', default: 0.5 }
             },
             tick: function (time, delta) {
                 const d = this.data;
                 const t = time * d.orbitSpeed;
-                const x = Math.cos(t) * d.radius + d.xOffset;
-                const z = Math.sin(t) * d.radius + d.zOffset;
+                const x = Math.cos(t) * d.radius;
+                const z = Math.sin(t) * d.radius;
                 const y = d.height + Math.sin(t * 2) * d.yFloat;
+                
                 this.el.setAttribute('position', { x: x, y: y, z: z });
+                
                 const angle = - (t * 180 / Math.PI) - 90;
                 this.el.setAttribute('rotation', {
                     x: d.manualRot.x,
@@ -85,49 +101,78 @@
             const target = document.querySelector('#target-entity');
             const overlay = document.querySelector('#scanning-overlay');
             const headerText = document.querySelector('#header p');
+            const captureBtn = document.querySelector('#capture-btn');
 
-            target.addEventListener("targetFound", event => {
+            // ターゲット認識時の挙動
+            target.addEventListener("targetFound", () => {
                 overlay.classList.add("hidden");
                 headerText.innerText = "ほたりんが出現中！";
             });
 
-            target.addEventListener("targetLost", event => {
+            target.addEventListener("targetLost", () => {
                 overlay.classList.remove("hidden");
-                headerText.innerText = "ジオラマの水面を映してください";
+                headerText.innerText = "ジオラマを映してください";
+            });
+
+            // 撮影（スクリーンショット）機能
+            captureBtn.addEventListener('click', () => {
+                const scene = document.querySelector('a-scene');
+                const video = document.querySelector('video');
+                const canvas = scene.canvas;
+
+                // 合成用キャンバスの作成
+                const combinedCanvas = document.createElement('canvas');
+                combinedCanvas.width = canvas.width;
+                combinedCanvas.height = canvas.height;
+                const ctx = combinedCanvas.getContext('2d');
+
+                // 1. 背面のカメラ映像を描画
+                ctx.drawImage(video, 0, 0, combinedCanvas.width, combinedCanvas.height);
+
+                // 2. 前面の3Dモデルを描画
+                ctx.drawImage(canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
+
+                // 3. 画像として書き出し・ダウンロード
+                const dataURL = combinedCanvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = `hotarin-ar-photo-${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
             });
         });
     </script>
 </head>
 
 <body>
-    <div id="capture-btn"></div>
     <div id="header">
-        <p>ジオラマの水面を映してください</p>
+        <p>ジオラマを映してください</p>
     </div>
 
     <div id="scanning-overlay">
         <div class="inner">ほたりんを探しています...</div>
     </div>
 
-    <a-scene mindar-image="imageTargetSrc: ./assets/hotarin/target.mind; uiScanning: no;"
-        renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
+    <div id="capture-btn" title="写真を撮る"></div>
+
+    <a-scene 
+        mindar-image="imageTargetSrc: ./assets/hotarin/target.mind; uiScanning: no;"
+        renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true;" 
+        vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
         <a-assets>
             <a-asset-item id="hotarinModel" src="./assets/hotarin/model.glb"></a-asset-item>
         </a-assets>
 
+        <a-light type="ambient" color="#BBB" intensity="1.5"></a-light>
+        <a-light type="directional" color="#FFF" intensity="1.0" position="-1 1 1"></a-light>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="target-entity" mindar-image-target="targetIndex: 0">
-            <a-gltf-model src="#hotarinModel" hotarin-logic="
-                radius: 1.0; 
-                height: 0.6; 
-                orbitSpeed: 0.0008; 
-                modelScale: 0.5; 
-                yFloat: 0.08; 
-                manualRot: 0 0 0;
-              " animation-mixer="timeScale: 1.0;">
+            <a-gltf-model src="#hotarinModel" 
+                hotarin-logic="radius: 0.8; height: 0.5; orbitSpeed: 0.0008; modelScale: 0.4;" 
+                animation-mixer>
             </a-gltf-model>
         </a-entity>
     </a-scene>
