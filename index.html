@@ -13,7 +13,6 @@
     <style>
         body { margin: 0; font-family: sans-serif; background-color: #000; overflow: hidden; }
 
-        /* ヘッダー */
         #header {
             position: fixed; top: 0; left: 0; width: 100%; height: 80px;
             background: white; color: black; display: flex;
@@ -22,11 +21,9 @@
         }
         #header p { margin: 0; font-weight: bold; font-size: 1.1rem; }
 
-        /* AR表示領域の調整（ヘッダー分下げる） */
         video { top: 80px !important; height: calc(100% - 80px) !important; object-fit: cover; }
         .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
 
-        /* スキャン中オーバーレイ */
         #scanning-overlay {
             position: absolute; top: 120px; left: 0; width: 100%; height: 50px;
             display: flex; align-items: center; justify-content: center;
@@ -37,46 +34,49 @@
             border-radius: 25px; color: #333; font-size: 0.9rem;
         }
 
-        /* 撮影ボタン */
         #capture-btn {
-            position: fixed;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 6px solid #fff;
-            border-radius: 50%;
-            z-index: 1001;
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 80px; background: rgba(255, 255, 255, 0.9);
+            border: 6px solid #fff; border-radius: 50%; z-index: 1001;
+            cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
         }
         #capture-btn::after {
-            content: "";
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 2px solid #333;
+            content: ""; width: 60px; height: 60px; border-radius: 50%; border: 2px solid #333;
         }
-        #capture-btn:active { background: #bbb; }
+
+        #shutter-flash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; opacity: 0; z-index: 2000; pointer-events: none;
+        }
+        .flash-anim { animation: flash-effect 0.3s ease-out; }
+        @keyframes flash-effect {
+            0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; }
+        }
+
+        #photo-preview {
+            position: fixed; top: 80px; left: 0; width: 100%; height: calc(100% - 80px);
+            background: black; z-index: 1500; display: none; object-fit: contain;
+        }
 
         .hidden { display: none !important; }
     </style>
 
     <script>
-        // ほたりんの浮遊・回転ロジック
+        // --- 設定エリア：ここだけ変えればOK ---
+        const VERSION = "1.02";
+        const MSG_WAITING = `ジオラマを映してください(version ${VERSION})`;
+        const MSG_FOUND = "ほたりんが出現中！";
+        // ------------------------------------
+
         AFRAME.registerComponent('hotarin-logic', {
             schema: {
-                radius: { type: 'number', default: 1.0 },
-                height: { type: 'number', default: 0.6 },
+                radius: { type: 'number', default: 0.8 },
+                height: { type: 'number', default: 0.5 },
                 orbitSpeed: { type: 'number', default: 0.0008 },
                 yFloat: { type: 'number', default: 0.08 },
                 manualRot: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
-                modelScale: { type: 'number', default: 0.5 }
+                modelScale: { type: 'number', default: 0.4 }
             },
             tick: function (time, delta) {
                 const d = this.data;
@@ -84,15 +84,9 @@
                 const x = Math.cos(t) * d.radius;
                 const z = Math.sin(t) * d.radius;
                 const y = d.height + Math.sin(t * 2) * d.yFloat;
-                
                 this.el.setAttribute('position', { x: x, y: y, z: z });
-                
                 const angle = - (t * 180 / Math.PI) - 90;
-                this.el.setAttribute('rotation', {
-                    x: d.manualRot.x,
-                    y: angle + d.manualRot.y,
-                    z: d.manualRot.z
-                });
+                this.el.setAttribute('rotation', { x: d.manualRot.x, y: angle + d.manualRot.y, z: d.manualRot.z });
                 this.el.setAttribute('scale', { x: d.modelScale, y: d.modelScale, z: d.modelScale });
             }
         });
@@ -102,50 +96,63 @@
             const overlay = document.querySelector('#scanning-overlay');
             const headerText = document.querySelector('#header p');
             const captureBtn = document.querySelector('#capture-btn');
+            const flash = document.querySelector('#shutter-flash');
+            const preview = document.querySelector('#photo-preview');
 
-            // ターゲット認識時の挙動
+            // 初期メッセージのセット
+            headerText.innerText = MSG_WAITING;
+
             target.addEventListener("targetFound", () => {
                 overlay.classList.add("hidden");
-                headerText.innerText = "ほたりんが出現中！";
+                headerText.innerText = MSG_FOUND;
             });
 
             target.addEventListener("targetLost", () => {
                 overlay.classList.remove("hidden");
-                headerText.innerText = "ジオラマを映してください(version 1.00)";
+                headerText.innerText = MSG_WAITING;
             });
 
-            // 撮影（スクリーンショット）機能
             captureBtn.addEventListener('click', () => {
                 const scene = document.querySelector('a-scene');
                 const video = document.querySelector('video');
                 const canvas = scene.canvas;
 
-                // 合成用キャンバスの作成
+                flash.classList.remove('flash-anim');
+                void flash.offsetWidth; 
+                flash.classList.add('flash-anim');
+
                 const combinedCanvas = document.createElement('canvas');
                 combinedCanvas.width = canvas.width;
                 combinedCanvas.height = canvas.height;
                 const ctx = combinedCanvas.getContext('2d');
 
-                // 1. 背面のカメラ映像を描画
                 ctx.drawImage(video, 0, 0, combinedCanvas.width, combinedCanvas.height);
-
-                // 2. 前面の3Dモデルを描画
                 ctx.drawImage(canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
 
-                // 3. 画像として書き出し・ダウンロード
                 const dataURL = combinedCanvas.toDataURL("image/png");
+                preview.src = dataURL;
+                preview.style.display = 'block';
+
                 const link = document.createElement('a');
-                link.download = `hotarin-ar-photo-${Date.now()}.png`;
+                link.download = `hotarin-photo-${Date.now()}.png`;
                 link.href = dataURL;
                 link.click();
+
+                setTimeout(() => {
+                    preview.style.display = 'none';
+                    preview.src = "";
+                }, 1500);
             });
         });
     </script>
 </head>
 
 <body>
+    <div id="shutter-flash"></div>
+    <img id="photo-preview" alt="Preview">
+
     <div id="header">
-        <p>ジオラマを映してください</p>
+        <p>Loading...</p>
     </div>
 
     <div id="scanning-overlay">
