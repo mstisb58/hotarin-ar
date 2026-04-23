@@ -31,6 +31,25 @@
             border-radius: 25px; color: #333; font-size: 0.9rem;
         }
         .hidden { display: none !important; }
+        /* 撮影ボタンのスタイル */
+        #capture-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 5px solid #fff;
+            border-radius: 50%;
+            z-index: 1001;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        #capture-btn:active {
+            background: #ccc;
+        }
     </style>
 
     <script>
@@ -81,6 +100,7 @@
 </head>
 
 <body>
+    <div id="capture-btn"></div>
     <div id="header">
         <p>ジオラマの水面を映してください</p>
     </div>
