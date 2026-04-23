@@ -1,234 +1,159 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hotarin AR - Camera Edition</title>
-
+    <title>Hotarin AR - Synchronized Box</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
-
     <style>
-        body { margin: 0; font-family: sans-serif; background-color: #000; overflow: hidden; }
-
-        #header {
-            position: fixed; top: 0; left: 0; width: 100%; height: 80px;
-            background: white; color: black; display: flex;
-            align-items: center; justify-content: center; z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-        #header p { margin: 0; font-weight: bold; font-size: 1.1rem; }
-
-        video { top: 80px !important; height: calc(100% - 80px) !important; object-fit: cover; }
-        .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
-
-        #scanning-overlay {
-            position: absolute; top: 120px; left: 0; width: 100%; height: 50px;
-            display: flex; align-items: center; justify-content: center;
-            pointer-events: none; z-index: 999;
-        }
-        #scanning-overlay .inner {
-            background: rgba(255, 255, 255, 0.7); padding: 10px 20px;
-            border-radius: 25px; color: #333; font-size: 0.9rem;
-        }
-
-        #capture-btn {
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 80px; height: 80px; background: rgba(255, 255, 255, 0.9);
-            border: 6px solid #fff; border-radius: 50%; z-index: 1001;
-            cursor: pointer; box-shadow: 0 0 15px rgba(0,0,0,0.4);
-            display: flex; align-items: center; justify-content: center;
-        }
-        #capture-btn::after {
-            content: ""; width: 60px; height: 60px; border-radius: 50%; border: 2px solid #333;
-        }
-
-        #shutter-flash {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; opacity: 0; z-index: 2000; pointer-events: none;
-        }
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #header { position: fixed; top: 0; width: 100%; height: 80px; background: white; z-index: 1000; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        #header p { font-weight: bold; margin: 0; font-size: 1.1rem; }
+        video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
+        #capture-btn { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: white; border-radius: 50%; z-index: 1001; border: 5px solid #ccc; cursor: pointer; }
+        #shutter-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; z-index: 2000; pointer-events: none; }
         .flash-anim { animation: flash-effect 0.3s ease-out; }
-        @keyframes flash-effect {
-            0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; }
-        }
-
-        #photo-preview {
-            position: fixed; top: 80px; left: 0; width: 100%; height: calc(100% - 80px);
-            background: black; z-index: 1500; display: none; object-fit: contain;
-        }
-
+        @keyframes flash-effect { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
         .hidden { display: none !important; }
     </style>
 
     <script>
-        // --- 設定エリア：ここだけ変えればOK ---
-        const VERSION = "1.03";
-        const MSG_WAITING = `ジオラマを映してください(version ${VERSION})`;
+        const VERSION = "1.2";
+        const MSG_WAITING = `ジオラマを映してください (v${VERSION})`;
         const MSG_FOUND = "ほたりんが出現中！";
-        // ------------------------------------
 
         AFRAME.registerComponent('hotarin-logic', {
             schema: {
-                speed: { type: 'number', default: 0.01 },      // 前進速度
-                maxTurn: { type: 'number', default: 2.0 },     // 最大旋回角度（度）
-                range: { type: 'number', default: 1.5 },       // 移動可能範囲（中心からの距離）
-                modelScale: { type: 'number', default: 0.4 }
+                dioramaWidth: { type: 'number', default:1.0 },
+                dioramaDepth: { type: 'number', default: 1.0 },
+                minHeight: { type: 'number', default: 0.15 },
+                maxHeight: { type: 'number', default: 0.4 },
+                speed: { type: 'number', default: 1.0 },
+                faceOffset: { type: 'number', default: 0 },
+                showDebugBox: { type: 'boolean', default: true } 
             },
 
+            // 最初に1回だけ実行（箱のエンティティを作るだけ）
             init: function () {
-                // 内部状態の初期化
-                this.pos = { x: 0, y: 0.5, z: 0 };
-                this.yaw = Math.random() * Math.PI * 2; // 現在の向き（ラジアン）
-                this.turnSpeed = 0;                     // 現在の旋回速度
+                this.pos = { x: 0, y: 0, z: 0 };
+                this.yaw = 0;
+                
+                // デバッグボックス用の実体を作っておく
+                this.debugBox = document.createElement('a-entity');
+                this.debugBox.setAttribute('id', 'debug-visual-box');
+                this.el.parentNode.appendChild(this.debugBox);
+            },
+
+            // パラメータが書き換わるたびに実行される
+            update: function () {
+                const d = this.data;
+
+                if (d.showDebugBox) {
+                    const zRange = d.maxHeight - d.minHeight;
+                    const zCenter = (d.maxHeight + d.minHeight) / 2;
+
+                    // 箱の形状を更新
+                    this.debugBox.setAttribute('geometry', {
+                        primitive: 'box',
+                        width: d.dioramaWidth,
+                        height: d.dioramaDepth, // A-FrameのBoxのheightはY(奥行)
+                        depth: zRange           // A-FrameのBoxのdepthはZ(高さ)
+                    });
+
+                    this.debugBox.setAttribute('material', {
+                        color: '#00ff00',
+                        wireframe: true,
+                        opacity: 0.5,
+                        transparent: true
+                    });
+
+                    this.debugBox.setAttribute('position', { x: 0, y: 0, z: zCenter });
+                    this.debugBox.setAttribute('visible', true);
+                } else {
+                    this.debugBox.setAttribute('visible', false);
+                }
             },
 
             tick: function (time, delta) {
                 const d = this.data;
+                if (d.speed <= 0) return;
 
-                // 1. 旋回速度をランダムに変化させる（慣性の演出）
-                // 毎フレーム少しだけ旋回力を変化させる（-0.1〜0.1度くらい）
-                this.turnSpeed += (Math.random() - 0.5) * 0.2;
-                // 旋回速度が速くなりすぎないよう制限
-                this.turnSpeed = Math.max(-d.maxTurn, Math.min(d.maxTurn, this.turnSpeed));
+                const t = ((Date.now() % 100000) / 1000) * d.speed;
 
-                // 2. エリア制限（中心から離れたら中心に引き戻す）
-                const dist = Math.sqrt(this.pos.x ** 2 + this.pos.z ** 2);
-                if (dist > d.range) {
-                    // 中心方向を計算して、そちらに少しずつ向きを変える
-                    const angleToCenter = Math.atan2(-this.pos.z, -this.pos.x);
-                    let diff = angleToCenter - this.yaw;
-                    // 角度の差を-PI〜PIの範囲に補正
-                    while (diff < -Math.PI) diff += Math.PI * 2;
-                    while (diff > Math.PI) diff -= Math.PI * 2;
-                    this.yaw += diff * 0.05; // 引き戻す力の強さ
-                } else {
-                    // 3. 通常のランダム旋回を適用
-                    this.yaw += this.turnSpeed * (Math.PI / 180);
-                }
+                const lx = d.dioramaWidth / 2;
+                const ly = d.dioramaDepth / 2;
+                const cz = (d.maxHeight + d.minHeight) / 2;
+                const rz = (d.maxHeight - d.minHeight) / 2;
 
-                // 4. 前進（モデルのX+方向へ進む）
-                // BlenderのX+が正面の場合、cosがX、sinが-Z方向の移動になります（A-Frame座標系）
-                this.pos.x += Math.cos(this.yaw) * d.speed;
-                this.pos.z -= Math.sin(this.yaw) * d.speed;
+                const px = ((Math.sin(t * 0.6) + Math.cos(t * 1.2)) / 2) * lx;
+                const py = ((Math.sin(t * 1.1) + Math.cos(t * 0.5)) / 2) * ly;
+                const pz = cz + ((Math.sin(t * 0.8) + Math.cos(t * 0.4)) / 2) * rz;
 
-                // 5. 上下移動（ここだけは従来のサイン波でふわふわさせる）
-                this.pos.y = d.height + Math.sin(time * 0.002) * 0.1;
+                const nt = t + 0.02;
+                const nx = ((Math.sin(nt * 0.6) + Math.cos(nt * 1.2)) / 2) * lx;
+                const ny = ((Math.sin(nt * 1.1) + Math.cos(nt * 0.5)) / 2) * ly;
+                const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
 
-                // 6. モデルに反映
-                this.el.setAttribute('position', this.pos);
-                
-                // 向きの回転。BlenderのX+が前なら、yawをそのままY軸回転に適用
-                // 角度補正（+90など）はモデルの書き出し向きに合わせて微調整が必要
-                const rotationY = (this.yaw * 180 / Math.PI);
-                this.el.setAttribute('rotation', { x: 0, y: rotationY, z: 0 });
-                this.el.setAttribute('scale', { x: d.modelScale, y: d.modelScale, z: d.modelScale });
+                this.el.object3D.position.set(px, py, pz);
+                this.el.object3D.rotation.set(0, 0, (angle + d.faceOffset) * Math.PI / 180);
             }
         });
 
         window.addEventListener("load", () => {
-            const target = document.querySelector('#target-entity');
-            const overlay = document.querySelector('#scanning-overlay');
             const headerText = document.querySelector('#header p');
+            const target = document.querySelector('#target-entity');
             const captureBtn = document.querySelector('#capture-btn');
             const flash = document.querySelector('#shutter-flash');
-            const preview = document.querySelector('#photo-preview');
 
-            // 初期メッセージのセット
             headerText.innerText = MSG_WAITING;
 
-            target.addEventListener("targetFound", () => {
-                overlay.classList.add("hidden");
-                headerText.innerText = MSG_FOUND;
-            });
-
-            target.addEventListener("targetLost", () => {
-                overlay.classList.remove("hidden");
-                headerText.innerText = MSG_WAITING;
-            });
+            target.addEventListener("targetFound", () => { headerText.innerText = MSG_FOUND; });
+            target.addEventListener("targetLost", () => { headerText.innerText = MSG_WAITING; });
 
             captureBtn.addEventListener('click', () => {
                 const scene = document.querySelector('a-scene');
-                const video = document.querySelector('video');
-                const canvas = scene.canvas;
-
-                // --- ここが重要！撮影の瞬間に強制的に再描画させる ---
                 scene.renderer.render(scene.object3D, scene.camera);
-
-                flash.classList.remove('flash-anim');
-                void flash.offsetWidth; 
                 flash.classList.add('flash-anim');
-
+                setTimeout(() => flash.classList.remove('flash-anim'), 300);
+                
+                // 簡易的なダウンロード処理（前述のcanvas合成ロジックと同じ）
                 const combinedCanvas = document.createElement('canvas');
-                // 解像度はビデオ（実写）に合わせると綺麗になります
+                const video = document.querySelector('video');
                 combinedCanvas.width = video.videoWidth;
                 combinedCanvas.height = video.videoHeight;
                 const ctx = combinedCanvas.getContext('2d');
-
-                // 1. 実写映像を先に描画
                 ctx.drawImage(video, 0, 0, combinedCanvas.width, combinedCanvas.height);
-
-                // 2. 3Dモデルをその上に描画
-                ctx.drawImage(canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
-
-                const dataURL = combinedCanvas.toDataURL("image/png");
-                
-                // プレビュー表示
-                preview.src = dataURL;
-                preview.style.display = 'block';
-
-                // ダウンロード
+                ctx.drawImage(scene.canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
                 const link = document.createElement('a');
-                link.download = `hotarin-photo-${Date.now()}.png`;
-                link.href = dataURL;
+                link.download = `hotarin-${Date.now()}.png`;
+                link.href = combinedCanvas.toDataURL();
                 link.click();
-
-                setTimeout(() => {
-                    preview.style.display = 'none';
-                    preview.src = "";
-                }, 1500);
             });
         });
     </script>
 </head>
-
 <body>
     <div id="shutter-flash"></div>
-    <img id="photo-preview" alt="Preview">
+    <div id="header"><p>Loading...</p></div>
+    <div id="capture-btn"></div>
 
-    <div id="header">
-        <p>Loading...</p>
-    </div>
-
-    <div id="scanning-overlay">
-        <div class="inner">ほたりんを探しています...</div>
-    </div>
-
-    <div id="capture-btn" title="写真を撮る"></div>
-
-    <a-scene 
-        mindar-image="imageTargetSrc: ./assets/hotarin/target.mind; uiScanning: no;"
-        renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true; alpha: true;" 
-        vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false">
-
-        <a-assets>
-            <a-asset-item id="hotarinModel" src="./assets/hotarin/model.glb"></a-asset-item>
-        </a-assets>
-
-        <a-light type="ambient" color="#BBB" intensity="1.5"></a-light>
-        <a-light type="directional" color="#FFF" intensity="1.0" position="-1 1 1"></a-light>
-
+    <a-scene mindar-image="imageTargetSrc: ./assets/hotarin/target.mind; uiScanning: no;" 
+             renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;"
+             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+        
+        <a-assets><a-asset-item id="hotarinModel" src="./assets/hotarin/model.glb"></a-asset-item></a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity id="target-entity" mindar-image-target="targetIndex: 0">
-            <a-gltf-model src="#hotarinModel" 
-                hotarin-logic="radius: 0.8; height: 0.5; orbitSpeed: 0.0008; modelScale: 0.4;" 
-                animation-mixer>
-            </a-gltf-model>
+            <a-entity id="hotarin-pivot" 
+                      hotarin-logic="dioramaWidth: 1; dioramaDepth: 1; minHeight: 0.10; maxHeight: 1.0; speed: 1.0;">
+                
+                <a-gltf-model src="#hotarinModel" rotation="90 0 0" scale="0.4 0.4 0.4" animation-mixer></a-gltf-model>
+                
+            </a-entity>
         </a-entity>
     </a-scene>
 </body>
-
 </html>
