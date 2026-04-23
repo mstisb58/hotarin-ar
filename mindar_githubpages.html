@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hotarin AR - Layout Test</title>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background-color: #000;
+        }
+
+        /* 上部の白い余白エリア */
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            /* 余白の高さ */
+            background: white;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            /* 最前面に表示 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #header p {
+            margin: 0;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* カメラ映像の表示位置をヘッダー分だけ下げる */
+        /* MindARが生成するビデオ要素を制御 */
+        video {
+            top: 80px !important;
+            height: calc(100% - 80px) !important;
+            object-fit: cover;
+        }
+
+        /* A-Frameの描画領域も下げる */
+        .a-canvas {
+            top: 80px !important;
+            height: calc(100% - 80px) !important;
+        }
+
+        /* スキャン案内（薄暗い幕を消し、案内文字だけにする） */
+        #scanning-overlay {
+            position: absolute;
+            top: 100px;
+            /* ヘッダーのすぐ下 */
+            left: 0;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            /* 下の操作を邪魔しない */
+            z-index: 999;
+        }
+
+        #scanning-overlay .inner {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        /* ターゲットが見つかったら案内を消す設定 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+
+    <script>
+        AFRAME.registerComponent('hotarin-logic', {
+            schema: {
+                radius: { type: 'number', default: 1.0 },
+                height: { type: 'number', default: 0.5 },
+                orbitSpeed: { type: 'number', default: 0.001 },
+                yFloat: { type: 'number', default: 0.1 },
+                xOffset: { type: 'number', default: 0 },
+                zOffset: { type: 'number', default: 0 },
+                manualRot: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
+                modelScale: { type: 'number', default: 0.5 }
+            },
+            tick: function (time, delta) {
+                const d = this.data;
+                const t = time * d.orbitSpeed;
+                const x = Math.cos(t) * d.radius + d.xOffset;
+                const z = Math.sin(t) * d.radius + d.zOffset;
+                const y = d.height + Math.sin(t * 2) * d.yFloat;
+                this.el.setAttribute('position', { x: x, y: y, z: z });
+                const angle = - (t * 180 / Math.PI) - 90;
+                this.el.setAttribute('rotation', {
+                    x: d.manualRot.x,
+                    y: angle + d.manualRot.y,
+                    z: d.manualRot.z
+                });
+                this.el.setAttribute('scale', { x: d.modelScale, y: d.modelScale, z: d.modelScale });
+            }
+        });
+
+        // ターゲットを認識した時に文字を変えたり案内を消したりする処理
+        window.addEventListener("load", () => {
+            const target = document.querySelector('#target-entity');
+            const overlay = document.querySelector('#scanning-overlay');
+            const headerText = document.querySelector('#header p');
+
+            target.addEventListener("targetFound", event => {
+                overlay.classList.add("hidden");
+                headerText.innerText = "アヒルが出現中！";
+            });
+
+            target.addEventListener("targetLost", event => {
+                overlay.classList.remove("hidden");
+                headerText.innerText = "ジオラマを映してください";
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <div id="header">
+        <p>ジオラマを映してください</p>
+    </div>
+
+    <div id="scanning-overlay">
+        <div class="inner">target.png を探しています...</div>
+    </div>
+
+    <a-scene mindar-image="imageTargetSrc: ./assets/duck/target.mind; uiScanning: no;"
+        renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false">
+
+        <a-assets>
+            <a-asset-item id="hotarinModel" src="./assets/duck/modeling.glb"></a-asset-item>
+        </a-assets>
+
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <a-entity id="target-entity" mindar-image-target="targetIndex: 0">
+            <a-gltf-model src="#hotarinModel" hotarin-logic="
+                radius: 1.2; 
+                height: 0.5; 
+                orbitSpeed: 0.001; 
+                modelScale: 0.1; 
+                yFloat: 0.05; 
+                manualRot: 0 0 0;
+              " animation-mixer="timeScale: 1.0;">
+            </a-gltf-model>
+        </a-entity>
+    </a-scene>
+</body>
+
+</html>
