@@ -64,7 +64,7 @@
 
     <script>
         // --- 設定エリア：ここだけ変えればOK ---
-        const VERSION = "1.02";
+        const VERSION = "1.03";
         const MSG_WAITING = `ジオラマを映してください(version ${VERSION})`;
         const MSG_FOUND = "ほたりんが出現中！";
         // ------------------------------------
@@ -117,22 +117,32 @@
                 const video = document.querySelector('video');
                 const canvas = scene.canvas;
 
+                // --- ここが重要！撮影の瞬間に強制的に再描画させる ---
+                scene.renderer.render(scene.object3D, scene.camera);
+
                 flash.classList.remove('flash-anim');
                 void flash.offsetWidth; 
                 flash.classList.add('flash-anim');
 
                 const combinedCanvas = document.createElement('canvas');
-                combinedCanvas.width = canvas.width;
-                combinedCanvas.height = canvas.height;
+                // 解像度はビデオ（実写）に合わせると綺麗になります
+                combinedCanvas.width = video.videoWidth;
+                combinedCanvas.height = video.videoHeight;
                 const ctx = combinedCanvas.getContext('2d');
 
+                // 1. 実写映像を先に描画
                 ctx.drawImage(video, 0, 0, combinedCanvas.width, combinedCanvas.height);
+
+                // 2. 3Dモデルをその上に描画
                 ctx.drawImage(canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
 
                 const dataURL = combinedCanvas.toDataURL("image/png");
+                
+                // プレビュー表示
                 preview.src = dataURL;
                 preview.style.display = 'block';
 
+                // ダウンロード
                 const link = document.createElement('a');
                 link.download = `hotarin-photo-${Date.now()}.png`;
                 link.href = dataURL;
@@ -163,7 +173,7 @@
 
     <a-scene 
         mindar-image="imageTargetSrc: ./assets/hotarin/target.mind; uiScanning: no;"
-        renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true;" 
+        renderer="colorManagement: true; physicallyCorrectLights: true; preserveDrawingBuffer: true; alpha: true;" 
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
