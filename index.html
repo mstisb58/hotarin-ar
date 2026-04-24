@@ -3,157 +3,103 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hotarin AR - Synchronized Box</title>
+    <title>Modular AR - Master Target v1.5.2</title>
+    
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
+
+    <script>
+        // ==========================================
+        // ★ 設定：このリストにフォルダ名を追加
+        // ==========================================
+        const arsystem = ["hotarin", "hotarin2",  "train"]; 
+        const SHOW_ALL_DEBUG = true; 
+        const MASTER_MIND = "./assets/target.mind"; // assets直下のターゲット
+
+        // 動的スクリプトロード
+        arsystem.forEach(id => {
+            const script = document.createElement('script');
+            script.src = `assets/${id}/motion.js`;
+            document.head.appendChild(script);
+        });
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const scene = document.querySelector('a-scene');
+            const assetManager = document.querySelector('#asset-manager');
+            const headerText = document.querySelector('#header p');
+            headerText.innerText = "ターゲットを映してね！";
+
+            // シーンにマスターターゲットを設定
+            scene.setAttribute('mindar-image', `imageTargetSrc: ${MASTER_MIND}; uiScanning: no;`);
+
+            // ★唯一の共通ターゲットエンティティを作成
+            const mainTarget = document.createElement('a-entity');
+            mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
+            scene.appendChild(mainTarget);
+
+            // 認識イベント
+            mainTarget.addEventListener("targetFound", () => { headerText.innerText = "ジオラマが起動しました！"; });
+            mainTarget.addEventListener("targetLost", () => { headerText.innerText = "ターゲットを映してね！"; });
+
+            // 各キャラを「子要素」として追加
+
+        arsystem.forEach((id) => {
+            const assetItem = document.createElement('a-asset-item');
+            assetItem.setAttribute('id', `${id}Model`);
+            assetItem.setAttribute('src', `assets/${id}/model.glb`);
+            assetManager.appendChild(assetItem);
+
+            const characterContainer = document.createElement('a-entity');
+            characterContainer.innerHTML = `
+                <a-entity ${id}-logic="showDebugBox: ${SHOW_ALL_DEBUG}">
+                    <a-gltf-model src="#${id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
+                </a-entity>
+            `;
+            mainTarget.appendChild(characterContainer);
+        });
+        });
+
+        function toggleCredits() { document.querySelector('#credits-info').classList.toggle('hidden'); }
+        function takePhoto() {
+            const scene = document.querySelector('a-scene');
+            const video = document.querySelector('video');
+            if(!video) return;
+            scene.renderer.render(scene.object3D, scene.camera);
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(scene.canvas, 0, 0, canvas.width, canvas.height);
+            const link = document.createElement('a');
+            link.download = `ar-capture-${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
         #header { position: fixed; top: 0; width: 100%; height: 80px; background: white; z-index: 1000; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        #header p { font-weight: bold; margin: 0; font-size: 1.1rem; }
+        #header p { font-weight: bold; margin: 0; }
+        #info-btn { position: fixed; top: 20px; right: 20px; width: 40px; height: 40px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; z-index: 1100; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border: 2px solid white; }
+        #credits-info { position: fixed; top: 80px; right: 20px; width: 260px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; z-index: 1050; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 0.8rem; line-height: 1.4; color: #333; }
+        .hidden { display: none !important; }
         video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
         #capture-btn { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: white; border-radius: 50%; z-index: 1001; border: 5px solid #ccc; cursor: pointer; }
-        #shutter-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; z-index: 2000; pointer-events: none; }
-        .flash-anim { animation: flash-effect 0.3s ease-out; }
-        @keyframes flash-effect { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
-        .hidden { display: none !important; }
     </style>
-
-    <script>
-        const VERSION = "1.2";
-        const MSG_WAITING = `ジオラマを映してください (v${VERSION})`;
-        const MSG_FOUND = "ほたりんが出現中！";
-
-        AFRAME.registerComponent('hotarin-logic', {
-            schema: {
-                dioramaWidth: { type: 'number', default:1.0 },
-                dioramaDepth: { type: 'number', default: 1.0 },
-                minHeight: { type: 'number', default: 0.15 },
-                maxHeight: { type: 'number', default: 0.4 },
-                speed: { type: 'number', default: 1.0 },
-                faceOffset: { type: 'number', default: 0 },
-                showDebugBox: { type: 'boolean', default: true } 
-            },
-
-            // 最初に1回だけ実行（箱のエンティティを作るだけ）
-            init: function () {
-                this.pos = { x: 0, y: 0, z: 0 };
-                this.yaw = 0;
-                
-                // デバッグボックス用の実体を作っておく
-                this.debugBox = document.createElement('a-entity');
-                this.debugBox.setAttribute('id', 'debug-visual-box');
-                this.el.parentNode.appendChild(this.debugBox);
-            },
-
-            // パラメータが書き換わるたびに実行される
-            update: function () {
-                const d = this.data;
-
-                if (d.showDebugBox) {
-                    const zRange = d.maxHeight - d.minHeight;
-                    const zCenter = (d.maxHeight + d.minHeight) / 2;
-
-                    // 箱の形状を更新
-                    this.debugBox.setAttribute('geometry', {
-                        primitive: 'box',
-                        width: d.dioramaWidth,
-                        height: d.dioramaDepth, // A-FrameのBoxのheightはY(奥行)
-                        depth: zRange           // A-FrameのBoxのdepthはZ(高さ)
-                    });
-
-                    this.debugBox.setAttribute('material', {
-                        color: '#00ff00',
-                        wireframe: true,
-                        opacity: 0.5,
-                        transparent: true
-                    });
-
-                    this.debugBox.setAttribute('position', { x: 0, y: 0, z: zCenter });
-                    this.debugBox.setAttribute('visible', true);
-                } else {
-                    this.debugBox.setAttribute('visible', false);
-                }
-            },
-
-            tick: function (time, delta) {
-                const d = this.data;
-                if (d.speed <= 0) return;
-
-                const t = ((Date.now() % 100000) / 1000) * d.speed;
-
-                const lx = d.dioramaWidth / 2;
-                const ly = d.dioramaDepth / 2;
-                const cz = (d.maxHeight + d.minHeight) / 2;
-                const rz = (d.maxHeight - d.minHeight) / 2;
-
-                const px = ((Math.sin(t * 0.6) + Math.cos(t * 1.2)) / 2) * lx;
-                const py = ((Math.sin(t * 1.1) + Math.cos(t * 0.5)) / 2) * ly;
-                const pz = cz + ((Math.sin(t * 0.8) + Math.cos(t * 0.4)) / 2) * rz;
-
-                const nt = t + 0.02;
-                const nx = ((Math.sin(nt * 0.6) + Math.cos(nt * 1.2)) / 2) * lx;
-                const ny = ((Math.sin(nt * 1.1) + Math.cos(nt * 0.5)) / 2) * ly;
-                const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
-
-                this.el.object3D.position.set(px, py, pz);
-                this.el.object3D.rotation.set(0, 0, (angle + d.faceOffset) * Math.PI / 180);
-            }
-        });
-
-        window.addEventListener("load", () => {
-            const headerText = document.querySelector('#header p');
-            const target = document.querySelector('#target-entity');
-            const captureBtn = document.querySelector('#capture-btn');
-            const flash = document.querySelector('#shutter-flash');
-
-            headerText.innerText = MSG_WAITING;
-
-            target.addEventListener("targetFound", () => { headerText.innerText = MSG_FOUND; });
-            target.addEventListener("targetLost", () => { headerText.innerText = MSG_WAITING; });
-
-            captureBtn.addEventListener('click', () => {
-                const scene = document.querySelector('a-scene');
-                scene.renderer.render(scene.object3D, scene.camera);
-                flash.classList.add('flash-anim');
-                setTimeout(() => flash.classList.remove('flash-anim'), 300);
-                
-                // 簡易的なダウンロード処理（前述のcanvas合成ロジックと同じ）
-                const combinedCanvas = document.createElement('canvas');
-                const video = document.querySelector('video');
-                combinedCanvas.width = video.videoWidth;
-                combinedCanvas.height = video.videoHeight;
-                const ctx = combinedCanvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, combinedCanvas.width, combinedCanvas.height);
-                ctx.drawImage(scene.canvas, 0, 0, combinedCanvas.width, combinedCanvas.height);
-                const link = document.createElement('a');
-                link.download = `hotarin-${Date.now()}.png`;
-                link.href = combinedCanvas.toDataURL();
-                link.click();
-            });
-        });
-    </script>
 </head>
 <body>
-    <div id="shutter-flash"></div>
     <div id="header"><p>Loading...</p></div>
-    <div id="capture-btn"></div>
-
-    <a-scene mindar-image="imageTargetSrc: ./assets/hotarin/target.mind; uiScanning: no;" 
-             renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;"
-             vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-        
-        <a-assets><a-asset-item id="hotarinModel" src="./assets/hotarin/model.glb"></a-asset-item></a-assets>
+    <div id="info-btn" onclick="toggleCredits()">i</div>
+    <div id="credits-info" class="hidden">
+        <h3>Licenses & Credits</h3>
+        <p>AR: Mind-AR (MIT) / Models: Meshy (CC BY 4.0)</p>
+    </div>
+    <div id="capture-btn" onclick="takePhoto()"></div>
+    <a-scene renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;" vr-mode-ui="enabled: false">
+        <a-assets id="asset-manager"></a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-        <a-entity id="target-entity" mindar-image-target="targetIndex: 0">
-            <a-entity id="hotarin-pivot" 
-                      hotarin-logic="dioramaWidth: 1; dioramaDepth: 1; minHeight: 0.10; maxHeight: 1.0; speed: 1.0;">
-                
-                <a-gltf-model src="#hotarinModel" rotation="90 0 0" scale="0.4 0.4 0.4" animation-mixer></a-gltf-model>
-                
-            </a-entity>
-        </a-entity>
     </a-scene>
 </body>
 </html>
