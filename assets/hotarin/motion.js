@@ -4,10 +4,10 @@ AFRAME.registerComponent('hotarin-logic', {
         dioramaDepth: { type: 'number', default: 1 },
         minHeight: { type: 'number', default: 0.05 },
         maxHeight: { type: 'number', default: 0.5 },
-        modelScale: { type: 'number', default: 0.1 }, 
+        modelScale: { type: 'number', default: 0.15 }, // 観賞用：少し大きめ
         seed: { type: 'number', default: 0 },
         debugColor: { type: 'color', default: '#00ff00' }, 
-        speed: { type: 'number', default: 1.0 },
+        speed: { type: 'number', default: 0.5 }, // 観賞用：ゆっくり優雅に飛ぶ
         showDebugBox: { type: 'boolean', default: false }
     },
 

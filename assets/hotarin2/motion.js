@@ -4,10 +4,10 @@ AFRAME.registerComponent('hotarin2-logic', {
         dioramaDepth: { type: 'number', default: 1 },
         minHeight: { type: 'number', default: 0.05 },
         maxHeight: { type: 'number', default: 0.5 },
-        modelScale: { type: 'number', default: 0.1 }, 
+        modelScale: { type: 'number', default: 0.06 }, // ゲーム用：ちびほたりん
         seed: { type: 'number', default: 1 },
-        debugColor: { type: 'color', default: '#00ff00' }, 
-        speed: { type: 'number', default: 1.0 },
+        debugColor: { type: 'color', default: '#ff0000' }, 
+        speed: { type: 'number', default: 2.0 }, // ゲーム用：素早く飛び回る
         showDebugBox: { type: 'boolean', default: false }
     },
 
@@ -59,13 +59,14 @@ AFRAME.registerComponent('hotarin2-logic', {
         const cz = (d.maxHeight + d.minHeight) / 2;
         const rz = (d.maxHeight - d.minHeight) / 2;
 
-        const px = ((Math.sin(t * 0.6) + Math.cos(t * 1.2)) / 2) * lx;
-        const py = ((Math.sin(t * 1.1) + Math.cos(t * 0.5)) / 2) * ly;
-        const pz = cz + ((Math.sin(t * 0.8) + Math.cos(t * 0.4)) / 2) * rz;
+        // 動きを複雑で不規則にする（サイン波の係数を複雑化）
+        const px = ((Math.sin(t * 1.6) + Math.cos(t * 2.2)) / 2) * lx;
+        const py = ((Math.sin(t * 2.1) + Math.cos(t * 1.5)) / 2) * ly;
+        const pz = cz + ((Math.sin(t * 1.8) + Math.cos(t * 1.4)) / 2) * rz;
 
         const nt = t + 0.02;
-        const nx = ((Math.sin(nt * 0.6) + Math.cos(nt * 1.2)) / 2) * lx;
-        const ny = ((Math.sin(nt * 1.1) + Math.cos(nt * 0.5)) / 2) * ly;
+        const nx = ((Math.sin(nt * 1.6) + Math.cos(nt * 2.2)) / 2) * lx;
+        const ny = ((Math.sin(nt * 2.1) + Math.cos(nt * 1.5)) / 2) * ly;
         const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
 
         this.el.object3D.position.set(px, py, pz);

@@ -174,8 +174,9 @@
             toggleBtn.classList.remove('hidden');
             toggleBtn.innerText = "ゲームモードにする";
 
-            // 全キャラを配置
+            // 全キャラを配置（ゲーム専用のhotarin2は除外）
             arsystem.forEach((id) => {
+                if (id === 'hotarin2') return; // 観賞モードには出さない
                 const container = document.createElement('a-entity');
                 container.innerHTML = `
                     <a-entity ${id}-logic="showDebugBox: false">
@@ -267,11 +268,12 @@
             const container = document.createElement('a-entity');
             container.classList.add('clickable');
             
+            // ゲーム用（hotarin2）のロジックとモデルをセット
             const logicEntity = document.createElement('a-entity');
-            logicEntity.setAttribute('hotarin-logic', `showDebugBox: false; seed: ${seed}`);
+            logicEntity.setAttribute('hotarin2-logic', `showDebugBox: false; seed: ${seed}`);
             
             const model = document.createElement('a-gltf-model');
-            model.setAttribute('src', '#hotarinModel');
+            model.setAttribute('src', '#hotarin2Model');
             model.setAttribute('rotation', '90 0 0');
             model.setAttribute('animation-mixer', '');
             
