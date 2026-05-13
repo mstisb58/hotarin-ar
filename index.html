@@ -315,33 +315,48 @@
             scene.renderer.render(scene.object3D, scene.camera);
             
             const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth || window.innerWidth;
-            canvas.height = video.videoHeight || window.innerHeight;
+            // スマホ画面と同じサイズでキャンバスを作成
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
             
-            // 1. ビデオ背景（現実の風景）を描画
+            // 1. ビデオ背景を画面のアスペクト比に合わせてトリミング描画（端が切れない・歪まないように）
             if(video.videoWidth) {
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const videoRatio = video.videoWidth / video.videoHeight;
+                const canvasRatio = canvas.width / canvas.height;
+                let sx = 0, sy = 0, sWidth = video.videoWidth, sHeight = video.videoHeight;
+                
+                if (videoRatio > canvasRatio) {
+                    sWidth = video.videoHeight * canvasRatio;
+                    sx = (video.videoWidth - sWidth) / 2;
+                } else {
+                    sHeight = video.videoWidth / canvasRatio;
+                    sy = (video.videoHeight - sHeight) / 2;
+                }
+                ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
             } else {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
             
-            // 2. AR空間（ほたりん等）を描画
+            // 2. AR空間を描画
             ctx.drawImage(scene.canvas, 0, 0, canvas.width, canvas.height);
             
             // 3. テキスト（スコアとハッシュタグ）を合成して描き込む
             const padding = 20;
             const bgHeight = 160;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'; // 白い半透明背景
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.fillRect(0, canvas.height - bgHeight, canvas.width, bgHeight);
             
             ctx.fillStyle = '#ff9800';
-            ctx.font = 'bold 50px sans-serif';
+            // スマホ画面サイズに合わせてフォントサイズを調整
+            const fontSize = Math.min(canvas.width * 0.08, 50); 
+            ctx.font = `bold ${fontSize}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.fillText(`ほたりんを ${score}匹 捕まえた！`, canvas.width / 2, canvas.height - 90);
             
-            ctx.font = 'bold 24px sans-serif';
+            const hashSize = Math.min(canvas.width * 0.04, 24);
+            ctx.font = `bold ${hashSize}px sans-serif`;
             ctx.fillStyle = '#333333';
             ctx.fillText(HASHTAGS, canvas.width / 2, canvas.height - 35);
             
@@ -353,7 +368,7 @@
             }, 'image/jpeg', 0.9);
         }
 
-        function shareTo(platform) {
+        function shareTo() {
             const text = `ARでほたりんを ${score}匹 捕まえたよ！\n${HASHTAGS}`;
             const url = window.location.href;
             
@@ -380,21 +395,7 @@
                 link.download = `hotarin_result_${Date.now()}.jpg`;
                 link.href = resultImageUrl;
                 link.click();
-                alert('結果画像をダウンロードしました。SNSの投稿画面で画像を添付してください！');
-            }
-
-            // テキスト情報だけを載せて各SNSの投稿画面を開く（フォールバック）
-            const encodedText = encodeURIComponent(text);
-            const encodedUrl = encodeURIComponent(url);
-            
-            if (platform === 'x') {
-                window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank');
-            } else if (platform === 'line') {
-                window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}&text=${encodedText}`, '_blank');
-            } else if (platform === 'facebook') {
-                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank');
-            } else if (platform === 'insta') {
-                // InstaはWeb専用の投稿URLがないため、アプリを開いてもらうか上記ダウンロードで対応完了
+                alert('結果画像をダウンロードしました。\nお好きなSNSを開いて、画像を添付して投稿してください！\n\n【おすすめハッシュタグ】\n' + HASHTAGS);
             }
         }
 
@@ -510,12 +511,10 @@
         /* シェアボタン */
         .share-section { margin-top: 25px; border-top: 2px dashed #ccc; padding-top: 15px; }
         .share-section p { margin: 0 0 10px 0; font-size: 0.9rem; color: #777; font-weight: bold; }
-        .share-buttons { display: flex; justify-content: space-between; gap: 8px; }
-        .share-btn { flex: 1; padding: 10px 0; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
-        .share-btn.insta { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-        .share-btn.x { background: #000; }
-        .share-btn.line { background: #06C755; }
-        .share-btn.fb { background: #1877F2; }
+        .share-buttons { display: flex; justify-content: center; gap: 8px; }
+        .share-btn { flex: 1; padding: 12px 0; border: none; border-radius: 30px; color: white; font-weight: bold; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .share-btn.unified { background: linear-gradient(45deg, #ff9800, #e91e63); }
+        .share-btn:active { transform: scale(0.98); }
 
         /* VRボタンを強制非表示 */
         .a-enter-vr { display: none !important; }
@@ -552,10 +551,7 @@
             <div class="share-section">
                 <p>結果画像をシェアする</p>
                 <div class="share-buttons">
-                    <button class="share-btn insta" onclick="shareTo('insta')">Insta</button>
-                    <button class="share-btn x" onclick="shareTo('x')">𝕏</button>
-                    <button class="share-btn line" onclick="shareTo('line')">LINE</button>
-                    <button class="share-btn fb" onclick="shareTo('facebook')">FB</button>
+                    <button class="share-btn unified" onclick="shareTo()">📤 SNSでシェアする</button>
                 </div>
             </div>
         </div>
