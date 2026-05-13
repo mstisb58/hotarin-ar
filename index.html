@@ -10,12 +10,9 @@
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
 
     <script>
-        // ==========================================
-        // ★ 設定：このリストにフォルダ名を追加
-        // ==========================================
         const arsystem = ["hotarin", "hotarin2", "train", "sounyan"]; 
         const SHOW_ALL_DEBUG = true; 
-        const MASTER_MIND = "./assets/target.mind"; // assets直下のターゲット
+        const MASTER_MIND = "./assets/target.mind";
 
         // 動的スクリプトロード
         arsystem.forEach(id => {
@@ -24,60 +21,125 @@
             document.head.appendChild(script);
         });
 
+        // 状態管理変数
+        let currentMode = 'view'; // 'view' or 'game'
+        let score = 0;
+        let hotarinCount = 0;
+        const MAX_HOTARIN = 5;
+        let spawnInterval = null;
+        let mainTarget = null;
+
         window.addEventListener("DOMContentLoaded", () => {
             const scene = document.querySelector('a-scene');
             const assetManager = document.querySelector('#asset-manager');
             const headerText = document.querySelector('#header p');
             headerText.innerText = "ターゲットを映してね！";
 
-            // シーンにマスターターゲットを設定
             scene.setAttribute('mindar-image', `imageTargetSrc: ${MASTER_MIND}; uiScanning: no;`);
 
-            // ★唯一の共通ターゲットエンティティを作成
-            const mainTarget = document.createElement('a-entity');
+            mainTarget = document.createElement('a-entity');
             mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
             scene.appendChild(mainTarget);
 
-            // 認識イベント
             mainTarget.addEventListener("targetFound", () => { headerText.innerText = "ジオラマが起動しました！"; });
             mainTarget.addEventListener("targetLost", () => { headerText.innerText = "ターゲットを映してね！"; });
 
-            // 各キャラを「子要素」として追加
+            // アセット事前読み込み
+            arsystem.forEach((id) => {
+                const assetItem = document.createElement('a-asset-item');
+                assetItem.setAttribute('id', `${id}Model`);
+                assetItem.setAttribute('src', `assets/${id}/model.glb`);
+                assetManager.appendChild(assetItem);
+            });
 
-        arsystem.forEach((id) => {
-            const assetItem = document.createElement('a-asset-item');
-            assetItem.setAttribute('id', `${id}Model`);
-            assetItem.setAttribute('src', `assets/${id}/model.glb`);
-            assetManager.appendChild(assetItem);
+            // 画面クリック時の虫取り網エフェクト（ゲームモード時のみ動作）
+            window.addEventListener('click', (e) => {
+                if(currentMode === 'game') {
+                    // UIクリック時は反応させない
+                    if(e.target.id === 'mode-toggle-btn' || e.target.id === 'capture-btn' || e.target.id === 'info-btn') return;
+                    showBugNet(e.clientX, e.clientY);
+                }
+            });
+
+            // 初期状態は鑑賞モード
+            startViewMode();
         });
 
-        const backgrounds = ["hotarin2", "train", "sounyan"];
-        backgrounds.forEach((id) => {
-            const bgContainer = document.createElement('a-entity');
-            bgContainer.innerHTML = `
-                <a-entity ${id}-logic="showDebugBox: false">
-                    <a-gltf-model src="#${id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
-                </a-entity>
-            `;
-            mainTarget.appendChild(bgContainer);
-        });
+        // ==========================
+        // モード管理ロジック
+        // ==========================
 
-        // スポーン処理
-        setInterval(() => {
-            if(hotarinCount < MAX_HOTARIN) {
-                spawnHotarin(mainTarget);
+        function clearScene() {
+            // mainTargetの中身（動的生成キャラ）を全て削除
+            while (mainTarget.firstChild) {
+                mainTarget.removeChild(mainTarget.firstChild);
             }
-        }, 5000);
+            if (spawnInterval) {
+                clearInterval(spawnInterval);
+                spawnInterval = null;
+            }
+            hotarinCount = 0;
+        }
 
-        // 画面クリックエフェクト
-        window.addEventListener('click', (e) => {
-            showBugNet(e.clientX, e.clientY);
-        });
-        });
+        function startViewMode() {
+            currentMode = 'view';
+            clearScene();
+            document.getElementById('score-display').classList.add('hidden');
+            document.getElementById('mode-toggle-btn').innerText = "ゲームモードにする";
 
-        let score = 0;
-        let hotarinCount = 0;
-        const MAX_HOTARIN = 5;
+            // 全キャラを配置
+            arsystem.forEach((id) => {
+                const container = document.createElement('a-entity');
+                container.innerHTML = `
+                    <a-entity ${id}-logic="showDebugBox: false">
+                        <a-gltf-model src="#${id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
+                    </a-entity>
+                `;
+                mainTarget.appendChild(container);
+            });
+        }
+
+        function startGameMode() {
+            currentMode = 'game';
+            clearScene();
+            
+            // スコアリセット
+            score = 0;
+            document.getElementById('score-display').innerText = `捕まえた数: ${score}`;
+            document.getElementById('score-display').classList.remove('hidden');
+            document.getElementById('mode-toggle-btn').innerText = "鑑賞モードにする";
+
+            // 背景キャラ配置
+            const backgrounds = ["hotarin2", "train", "sounyan"];
+            backgrounds.forEach((id) => {
+                const bgContainer = document.createElement('a-entity');
+                bgContainer.innerHTML = `
+                    <a-entity ${id}-logic="showDebugBox: false">
+                        <a-gltf-model src="#${id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
+                    </a-entity>
+                `;
+                mainTarget.appendChild(bgContainer);
+            });
+
+            // スポーン処理開始
+            spawnInterval = setInterval(() => {
+                if(hotarinCount < MAX_HOTARIN) {
+                    spawnHotarin(mainTarget);
+                }
+            }, 5000);
+        }
+
+        function toggleMode() {
+            if (currentMode === 'view') {
+                startGameMode();
+            } else {
+                startViewMode();
+            }
+        }
+
+        // ==========================
+        // ゲームロジック
+        // ==========================
 
         function spawnHotarin(parent) {
             hotarinCount++;
@@ -85,7 +147,6 @@
             const container = document.createElement('a-entity');
             container.classList.add('clickable');
             
-            // 当たり判定用の球体をモデルに重ねる
             container.innerHTML = `
                 <a-entity hotarin-logic="showDebugBox: false; seed: ${seed}">
                     <a-gltf-model src="#hotarinModel" rotation="90 0 0" animation-mixer></a-gltf-model>
@@ -94,13 +155,13 @@
             `;
             
             container.addEventListener('click', function(evt) {
+                if(currentMode !== 'game') return;
                 evt.stopPropagation();
                 catchHotarin(container);
             });
 
             parent.appendChild(container);
 
-            // 10秒後に自然消滅
             setTimeout(() => {
                 if (container.parentNode) {
                     container.parentNode.removeChild(container);
@@ -144,6 +205,10 @@
             }, 600);
         }
 
+        // ==========================
+        // UIロジック
+        // ==========================
+
         function toggleCredits() { document.querySelector('#credits-info').classList.toggle('hidden'); }
         function takePhoto() {
             const scene = document.querySelector('a-scene');
@@ -170,8 +235,15 @@
         #credits-info { position: fixed; top: 80px; right: 20px; width: 260px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; z-index: 1050; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 0.8rem; line-height: 1.4; color: #333; }
         .hidden { display: none !important; }
         video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
+        
+        /* ボタン類 */
         #capture-btn { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: white; border-radius: 50%; z-index: 1001; border: 5px solid #ccc; cursor: pointer; }
-        #score-display { position: fixed; bottom: 20px; left: 20px; background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 1.2rem; font-weight: bold; z-index: 1001; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        #score-display { position: fixed; bottom: 20px; left: 20px; background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 1.2rem; font-weight: bold; z-index: 1001; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events: none; }
+        #mode-toggle-btn { position: fixed; bottom: 20px; right: 20px; background: #ff9800; color: white; padding: 10px 20px; border-radius: 20px; font-size: 1rem; font-weight: bold; z-index: 1001; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; user-select: none; }
+        #mode-toggle-btn:active { transform: scale(0.95); }
+
+        /* VRボタンを強制非表示 */
+        .a-enter-vr { display: none !important; }
     </style>
 </head>
 <body>
@@ -181,8 +253,12 @@
         <h3>Licenses & Credits</h3>
         <p>AR: Mind-AR (MIT) / Models: Meshy (CC BY 4.0)</p>
     </div>
+    
+    <!-- UI -->
     <div id="capture-btn" onclick="takePhoto()"></div>
-    <div id="score-display">捕まえた数: 0</div>
+    <div id="score-display" class="hidden">捕まえた数: 0</div>
+    <div id="mode-toggle-btn" onclick="toggleMode()">ゲームモードにする</div>
+
     <a-scene cursor="rayOrigin: mouse" raycaster="objects: .clickable" renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;" vr-mode-ui="enabled: false">
         <a-assets id="asset-manager"></a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
