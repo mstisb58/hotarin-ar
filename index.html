@@ -49,16 +49,100 @@
             assetItem.setAttribute('id', `${id}Model`);
             assetItem.setAttribute('src', `assets/${id}/model.glb`);
             assetManager.appendChild(assetItem);
+        });
 
-            const characterContainer = document.createElement('a-entity');
-            characterContainer.innerHTML = `
-                <a-entity ${id}-logic="showDebugBox: ${SHOW_ALL_DEBUG}">
+        const backgrounds = ["hotarin2", "train", "sounyan"];
+        backgrounds.forEach((id) => {
+            const bgContainer = document.createElement('a-entity');
+            bgContainer.innerHTML = `
+                <a-entity ${id}-logic="showDebugBox: false">
                     <a-gltf-model src="#${id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
                 </a-entity>
             `;
-            mainTarget.appendChild(characterContainer);
+            mainTarget.appendChild(bgContainer);
+        });
+
+        // スポーン処理
+        setInterval(() => {
+            if(hotarinCount < MAX_HOTARIN) {
+                spawnHotarin(mainTarget);
+            }
+        }, 5000);
+
+        // 画面クリックエフェクト
+        window.addEventListener('click', (e) => {
+            showBugNet(e.clientX, e.clientY);
         });
         });
+
+        let score = 0;
+        let hotarinCount = 0;
+        const MAX_HOTARIN = 5;
+
+        function spawnHotarin(parent) {
+            hotarinCount++;
+            const seed = Math.random() * 1000;
+            const container = document.createElement('a-entity');
+            container.classList.add('clickable');
+            
+            // 当たり判定用の球体をモデルに重ねる
+            container.innerHTML = `
+                <a-entity hotarin-logic="showDebugBox: false; seed: ${seed}">
+                    <a-gltf-model src="#hotarinModel" rotation="90 0 0" animation-mixer></a-gltf-model>
+                    <a-sphere radius="0.2" material="opacity: 0; transparent: true"></a-sphere>
+                </a-entity>
+            `;
+            
+            container.addEventListener('click', function(evt) {
+                evt.stopPropagation();
+                catchHotarin(container);
+            });
+
+            parent.appendChild(container);
+
+            // 10秒後に自然消滅
+            setTimeout(() => {
+                if (container.parentNode) {
+                    container.parentNode.removeChild(container);
+                    hotarinCount--;
+                }
+            }, 10000);
+        }
+
+        function catchHotarin(element) {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+                hotarinCount--;
+                score++;
+                document.getElementById('score-display').innerText = `捕まえた数: ${score}`;
+            }
+        }
+
+        function showBugNet(x, y) {
+            const net = document.createElement('div');
+            net.innerText = '🕸️';
+            net.style.position = 'fixed';
+            net.style.left = (x - 25) + 'px';
+            net.style.top = (y - 25) + 'px';
+            net.style.fontSize = '50px';
+            net.style.pointerEvents = 'none';
+            net.style.zIndex = '2000';
+            net.style.transition = 'all 0.3s ease-out';
+            net.style.transform = 'scale(0)';
+            document.body.appendChild(net);
+
+            setTimeout(() => {
+                net.style.transform = 'scale(1) rotate(-45deg)';
+                net.style.opacity = '1';
+            }, 10);
+            setTimeout(() => {
+                net.style.transform = 'scale(1.2) rotate(0deg)';
+                net.style.opacity = '0';
+            }, 300);
+            setTimeout(() => {
+                net.remove();
+            }, 600);
+        }
 
         function toggleCredits() { document.querySelector('#credits-info').classList.toggle('hidden'); }
         function takePhoto() {
@@ -87,6 +171,7 @@
         .hidden { display: none !important; }
         video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
         #capture-btn { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: white; border-radius: 50%; z-index: 1001; border: 5px solid #ccc; cursor: pointer; }
+        #score-display { position: fixed; bottom: 20px; left: 20px; background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 1.2rem; font-weight: bold; z-index: 1001; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
@@ -97,7 +182,8 @@
         <p>AR: Mind-AR (MIT) / Models: Meshy (CC BY 4.0)</p>
     </div>
     <div id="capture-btn" onclick="takePhoto()"></div>
-    <a-scene renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;" vr-mode-ui="enabled: false">
+    <div id="score-display">捕まえた数: 0</div>
+    <a-scene cursor="rayOrigin: mouse" raycaster="objects: .clickable" renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;" vr-mode-ui="enabled: false">
         <a-assets id="asset-manager"></a-assets>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
     </a-scene>
