@@ -21,13 +21,33 @@
             document.head.appendChild(script);
         });
 
+        // ==========================================
+        // ★ メッセージ設定（後からここを編集してください）
+        // ==========================================
+        const RESULT_MESSAGES = [
+            { min: 20, text: "すごい！虫取り名人ですね♪" },
+            { min: 10, text: "よくできました！あともう一息！" },
+            { min: 5,  text: "なかなかやりますね！次はもっと捕まえられるかも！" },
+            { min: 0,  text: "まだまだです。もっとがんばりましょう" }
+        ];
+        
+        const HASHTAGS = "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部";
+
         // 状態管理変数
-        let currentMode = 'view'; // 'view' or 'game'
+        let currentMode = 'view'; // 'view', 'game', 'result'
         let score = 0;
         let hotarinCount = 0;
         const MAX_HOTARIN = 5;
         let spawnInterval = null;
         let mainTarget = null;
+        
+        let gameTimer = null;
+        let timeLeft = 10;
+        const GAME_DURATION = 10; // ゲームの制限時間（秒）
+
+        // シェア用画像保持変数
+        let resultImageBlob = null;
+        let resultImageUrl = null;
 
         window.addEventListener("DOMContentLoaded", () => {
             const scene = document.querySelector('a-scene');
@@ -52,12 +72,49 @@
                 assetManager.appendChild(assetItem);
             });
 
-            // 画面クリック時の虫取り網エフェクト（ゲームモード時のみ動作）
+            // 画面クリック時の虫取り網エフェクトと当たり判定（ゲームモード時のみ動作）
             window.addEventListener('click', (e) => {
                 if(currentMode === 'game') {
                     // UIクリック時は反応させない
-                    if(e.target.id === 'mode-toggle-btn' || e.target.id === 'capture-btn' || e.target.id === 'info-btn') return;
+                    if(e.target.closest('#mode-toggle-btn') || e.target.closest('#capture-btn') || e.target.closest('#info-btn')) return;
                     showBugNet(e.clientX, e.clientY);
+
+                    // 手動Raycast: A-Frameのcursorズレ問題を解消
+                    const sceneEl = document.querySelector('a-scene');
+                    const camera = sceneEl.camera;
+                    if (!camera) return;
+
+                    const mouse = new THREE.Vector2();
+                    const rect = sceneEl.canvas.getBoundingClientRect();
+                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                    const raycaster = new THREE.Raycaster();
+                    raycaster.setFromCamera(mouse, camera);
+
+                    const clickables = document.querySelectorAll('.clickable');
+                    const objectsToIntersect = [];
+                    clickables.forEach(el => {
+                        if (el.object3D) objectsToIntersect.push(el.object3D);
+                    });
+
+                    const intersects = raycaster.intersectObjects(objectsToIntersect, true);
+                    
+                    if (intersects.length > 0) {
+                        let hitObj = intersects[0].object;
+                        while(hitObj && hitObj.el === undefined) {
+                            hitObj = hitObj.parent;
+                        }
+                        let hitEl = hitObj ? hitObj.el : null;
+                        
+                        while(hitEl && hitEl !== sceneEl) {
+                            if(hitEl.classList && hitEl.classList.contains('clickable')) {
+                                catchHotarin(hitEl);
+                                break;
+                            }
+                            hitEl = hitEl.parentNode;
+                        }
+                    }
                 }
             });
 
@@ -70,22 +127,29 @@
         // ==========================
 
         function clearScene() {
-            // mainTargetの中身（動的生成キャラ）を全て削除
             while (mainTarget.firstChild) {
                 mainTarget.removeChild(mainTarget.firstChild);
             }
-            if (spawnInterval) {
-                clearInterval(spawnInterval);
-                spawnInterval = null;
-            }
+            if (spawnInterval) clearInterval(spawnInterval);
+            if (gameTimer) clearInterval(gameTimer);
+            spawnInterval = null;
+            gameTimer = null;
             hotarinCount = 0;
         }
 
         function startViewMode() {
             currentMode = 'view';
             clearScene();
+            
+            // UI表示制御
+            document.getElementById('result-screen').classList.add('hidden');
             document.getElementById('score-display').classList.add('hidden');
-            document.getElementById('mode-toggle-btn').innerText = "ゲームモードにする";
+            document.getElementById('timer-display').classList.add('hidden');
+            document.getElementById('capture-btn').classList.remove('hidden'); 
+            
+            const toggleBtn = document.getElementById('mode-toggle-btn');
+            toggleBtn.classList.remove('hidden');
+            toggleBtn.innerText = "ゲームモードにする";
 
             // 全キャラを配置
             arsystem.forEach((id) => {
@@ -103,11 +167,18 @@
             currentMode = 'game';
             clearScene();
             
-            // スコアリセット
-            score = 0;
-            document.getElementById('score-display').innerText = `捕まえた数: ${score}`;
+            // UI表示制御
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('capture-btn').classList.add('hidden'); 
+            document.getElementById('mode-toggle-btn').classList.add('hidden'); 
             document.getElementById('score-display').classList.remove('hidden');
-            document.getElementById('mode-toggle-btn').innerText = "鑑賞モードにする";
+            document.getElementById('timer-display').classList.remove('hidden');
+            
+            // パラメータ初期化
+            score = 0;
+            timeLeft = GAME_DURATION;
+            updateScoreUI();
+            updateTimerUI();
 
             // 背景キャラ配置
             const backgrounds = ["hotarin2", "train", "sounyan"];
@@ -121,16 +192,41 @@
                 mainTarget.appendChild(bgContainer);
             });
 
+            // ゲーム用タイマー開始
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateTimerUI();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
             // スポーン処理開始
             spawnInterval = setInterval(() => {
                 if(hotarinCount < MAX_HOTARIN) {
                     spawnHotarin(mainTarget);
                 }
-            }, 5000);
+            }, 3000); 
+            
+            spawnHotarin(mainTarget);
+        }
+
+        function endGame() {
+            currentMode = 'result';
+            
+            // ★シーンを消す直前のAR映像を「リザルト画像」としてキャプチャする
+            captureResultImage();
+            
+            clearScene(); 
+            
+            document.getElementById('score-display').classList.add('hidden');
+            document.getElementById('timer-display').classList.add('hidden');
+            
+            showResultScreen();
         }
 
         function toggleMode() {
-            if (currentMode === 'view') {
+            if (currentMode === 'view' || currentMode === 'result') {
                 startGameMode();
             } else {
                 startViewMode();
@@ -147,18 +243,21 @@
             const container = document.createElement('a-entity');
             container.classList.add('clickable');
             
-            container.innerHTML = `
-                <a-entity hotarin-logic="showDebugBox: false; seed: ${seed}">
-                    <a-gltf-model src="#hotarinModel" rotation="90 0 0" animation-mixer></a-gltf-model>
-                    <a-sphere radius="0.2" material="opacity: 0; transparent: true"></a-sphere>
-                </a-entity>
-            `;
+            const logicEntity = document.createElement('a-entity');
+            logicEntity.setAttribute('hotarin-logic', `showDebugBox: false; seed: ${seed}`);
             
-            container.addEventListener('click', function(evt) {
-                if(currentMode !== 'game') return;
-                evt.stopPropagation();
-                catchHotarin(container);
-            });
+            const model = document.createElement('a-gltf-model');
+            model.setAttribute('src', '#hotarinModel');
+            model.setAttribute('rotation', '90 0 0');
+            model.setAttribute('animation-mixer', '');
+            
+            const sphere = document.createElement('a-sphere');
+            sphere.setAttribute('radius', '1.0'); 
+            sphere.setAttribute('material', 'opacity: 0; transparent: true');
+            
+            logicEntity.appendChild(model);
+            logicEntity.appendChild(sphere);
+            container.appendChild(logicEntity);
 
             parent.appendChild(container);
 
@@ -175,8 +274,141 @@
                 element.parentNode.removeChild(element);
                 hotarinCount--;
                 score++;
-                document.getElementById('score-display').innerText = `捕まえた数: ${score}`;
+                updateScoreUI();
             }
+        }
+
+        // ==========================
+        // リザルト画像生成＆シェアロジック
+        // ==========================
+
+        function captureResultImage() {
+            const scene = document.querySelector('a-scene');
+            const video = document.querySelector('video');
+            if(!video || !scene.renderer) return;
+            
+            // WebGLの描画内容を最新にする
+            scene.renderer.render(scene.object3D, scene.camera);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || window.innerWidth;
+            canvas.height = video.videoHeight || window.innerHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // 1. ビデオ背景（現実の風景）を描画
+            if(video.videoWidth) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // 2. AR空間（ほたりん等）を描画
+            ctx.drawImage(scene.canvas, 0, 0, canvas.width, canvas.height);
+            
+            // 3. テキスト（スコアとハッシュタグ）を合成して描き込む
+            const padding = 20;
+            const bgHeight = 160;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'; // 白い半透明背景
+            ctx.fillRect(0, canvas.height - bgHeight, canvas.width, bgHeight);
+            
+            ctx.fillStyle = '#ff9800';
+            ctx.font = 'bold 50px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`ほたりんを ${score}匹 捕まえた！`, canvas.width / 2, canvas.height - 90);
+            
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillStyle = '#333333';
+            ctx.fillText(HASHTAGS, canvas.width / 2, canvas.height - 35);
+            
+            // Blob（ファイル実体）に変換して保持しておく
+            canvas.toBlob((blob) => {
+                resultImageBlob = blob;
+                if(resultImageUrl) URL.revokeObjectURL(resultImageUrl);
+                resultImageUrl = URL.createObjectURL(blob);
+            }, 'image/jpeg', 0.9);
+        }
+
+        function shareTo(platform) {
+            const text = `ARでほたりんを ${score}匹 捕まえたよ！\n${HASHTAGS}`;
+            const url = window.location.href;
+            
+            // Web Share API（画像ファイルを直接渡せるかチェック）
+            if (navigator.canShare && resultImageBlob) {
+                const file = new File([resultImageBlob], `hotarin_result_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                // ファイル添付でのシェアに対応している環境（スマホ等）
+                if (navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        title: 'ほたりん虫取りゲーム',
+                        text: text,
+                        url: url,
+                        files: [file]
+                    }).catch(console.error);
+                    return; // 成功すればネイティブアプリが開くので関数終了
+                }
+            }
+            
+            // --- ファイル直接シェア非対応の場合（PCなど） ---
+            
+            // 画像をユーザーの端末に自動ダウンロードさせる
+            if (resultImageUrl) {
+                const link = document.createElement('a');
+                link.download = `hotarin_result_${Date.now()}.jpg`;
+                link.href = resultImageUrl;
+                link.click();
+                alert('結果画像をダウンロードしました。SNSの投稿画面で画像を添付してください！');
+            }
+
+            // テキスト情報だけを載せて各SNSの投稿画面を開く（フォールバック）
+            const encodedText = encodeURIComponent(text);
+            const encodedUrl = encodeURIComponent(url);
+            
+            if (platform === 'x') {
+                window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, '_blank');
+            } else if (platform === 'line') {
+                window.open(`https://social-plugins.line.me/lineit/share?url=${encodedUrl}&text=${encodedText}`, '_blank');
+            } else if (platform === 'facebook') {
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank');
+            } else if (platform === 'insta') {
+                // InstaはWeb専用の投稿URLがないため、アプリを開いてもらうか上記ダウンロードで対応完了
+            }
+        }
+
+        // ==========================
+        // UI操作ロジック
+        // ==========================
+
+        function updateScoreUI() {
+            document.getElementById('score-display').innerText = `捕まえた数: ${score}`;
+        }
+
+        function updateTimerUI() {
+            const timerEl = document.getElementById('timer-display');
+            timerEl.innerText = `残り時間: ${timeLeft}秒`;
+            if (timeLeft <= 3) {
+                timerEl.style.background = 'rgba(255, 0, 0, 1)';
+            } else {
+                timerEl.style.background = 'rgba(255, 100, 100, 0.9)';
+            }
+        }
+
+        function showResultScreen() {
+            const resultScreen = document.getElementById('result-screen');
+            const resultScore = document.getElementById('result-score');
+            const resultMessage = document.getElementById('result-message');
+            
+            resultScore.innerText = `${score} 匹捕まえた！`;
+            
+            let msg = RESULT_MESSAGES[RESULT_MESSAGES.length - 1].text;
+            for (let i = 0; i < RESULT_MESSAGES.length; i++) {
+                if (score >= RESULT_MESSAGES[i].min) {
+                    msg = RESULT_MESSAGES[i].text;
+                    break;
+                }
+            }
+            resultMessage.innerText = msg;
+            
+            resultScreen.classList.remove('hidden');
         }
 
         function showBugNet(x, y) {
@@ -204,10 +436,6 @@
                 net.remove();
             }, 600);
         }
-
-        // ==========================
-        // UIロジック
-        // ==========================
 
         function toggleCredits() { document.querySelector('#credits-info').classList.toggle('hidden'); }
         function takePhoto() {
@@ -242,6 +470,29 @@
         #mode-toggle-btn { position: fixed; bottom: 20px; right: 20px; background: #ff9800; color: white; padding: 10px 20px; border-radius: 20px; font-size: 1rem; font-weight: bold; z-index: 1001; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; user-select: none; }
         #mode-toggle-btn:active { transform: scale(0.95); }
 
+        /* タイマー表示 */
+        #timer-display { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(255, 100, 100, 0.9); color: white; padding: 10px 25px; border-radius: 25px; font-size: 1.5rem; font-weight: bold; z-index: 1001; border: 2px solid #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); pointer-events: none; transition: background 0.3s; }
+
+        /* リザルト画面（オーバーレイ） */
+        #result-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; text-align: center; }
+        .result-content { background: white; color: #333; padding: 30px; border-radius: 15px; width: 85%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .result-content h2 { margin-top: 0; color: #ff9800; font-size: 1.8rem; }
+        #result-score { font-size: 1.8rem; font-weight: bold; margin: 15px 0; color: #e91e63; }
+        #result-message { font-size: 1.1rem; margin-bottom: 25px; line-height: 1.5; color: #444; font-weight: bold; }
+        .result-buttons button { display: block; width: 100%; padding: 15px; margin-bottom: 12px; border: none; border-radius: 30px; background: #ff9800; color: white; font-size: 1.1rem; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .result-buttons button:active { transform: scale(0.98); }
+        .result-buttons button.btn-secondary { background: #888; margin-bottom: 0; }
+        
+        /* シェアボタン */
+        .share-section { margin-top: 25px; border-top: 2px dashed #ccc; padding-top: 15px; }
+        .share-section p { margin: 0 0 10px 0; font-size: 0.9rem; color: #777; font-weight: bold; }
+        .share-buttons { display: flex; justify-content: space-between; gap: 8px; }
+        .share-btn { flex: 1; padding: 10px 0; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+        .share-btn.insta { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
+        .share-btn.x { background: #000; }
+        .share-btn.line { background: #06C755; }
+        .share-btn.fb { background: #1877F2; }
+
         /* VRボタンを強制非表示 */
         .a-enter-vr { display: none !important; }
     </style>
@@ -254,10 +505,37 @@
         <p>AR: Mind-AR (MIT) / Models: Meshy (CC BY 4.0)</p>
     </div>
     
-    <!-- UI -->
+    <!-- AR・鑑賞用UI -->
     <div id="capture-btn" onclick="takePhoto()"></div>
-    <div id="score-display" class="hidden">捕まえた数: 0</div>
     <div id="mode-toggle-btn" onclick="toggleMode()">ゲームモードにする</div>
+
+    <!-- ゲームプレイ用UI -->
+    <div id="timer-display" class="hidden">残り時間: 10秒</div>
+    <div id="score-display" class="hidden">捕まえた数: 0</div>
+
+    <!-- リザルト画面（オーバーレイ） -->
+    <div id="result-screen" class="hidden">
+        <div class="result-content">
+            <h2>結果発表！</h2>
+            <p id="result-score">0 匹捕まえた！</p>
+            <p id="result-message">まだまだです。もっとがんばりましょう</p>
+            
+            <div class="result-buttons">
+                <button onclick="startGameMode()">リセットして再挑戦</button>
+                <button onclick="startViewMode()" class="btn-secondary">鑑賞モードへ戻る</button>
+            </div>
+            
+            <div class="share-section">
+                <p>結果画像をシェアする</p>
+                <div class="share-buttons">
+                    <button class="share-btn insta" onclick="shareTo('insta')">Insta</button>
+                    <button class="share-btn x" onclick="shareTo('x')">𝕏</button>
+                    <button class="share-btn line" onclick="shareTo('line')">LINE</button>
+                    <button class="share-btn fb" onclick="shareTo('facebook')">FB</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <a-scene cursor="rayOrigin: mouse" raycaster="objects: .clickable" renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;" vr-mode-ui="enabled: false">
         <a-assets id="asset-manager"></a-assets>
