@@ -4,7 +4,7 @@ AFRAME.registerComponent('ybp-logic', {
         // 静止ARとしての位置・回転・スケールのコントロール
         posX: { type: 'number', default: 0 },
         posY: { type: 'number', default: 0 },
-        height: { type: 'number', default: -1 },
+        height: { type: 'number', default: 0 },
 
         rotX: { type: 'number', default: 90 },
         rotY: { type: 'number', default: 0 },
@@ -13,9 +13,9 @@ AFRAME.registerComponent('ybp-logic', {
 
 
         // サイズをX,Y,Zそれぞれ個別に指定
-        scaleX: { type: 'number', default: 0.2 },
-        scaleY: { type: 'number', default: 0.2 },
-        scaleZ: { type: 'number', default: 0.2 },
+        scaleX: { type: 'number', default: 0.15 },
+        scaleY: { type: 'number', default: 0.15 },
+        scaleZ: { type: 'number', default: 0.15 },
 
         showDebugBox: { type: 'boolean', default: false }
     },
