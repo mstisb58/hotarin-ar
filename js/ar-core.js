@@ -53,10 +53,12 @@ window.ARCore = {
                 const seedSetting = (spawnCount > 1) ? `seed: ${i * 50};` : '';
                 // 個別設定パラメータがあれば追加
                 const extraParams = target.params ? target.params + ';' : '';
+                // ベースの回転（Blenderの書き出し設定に依存するため調整可能に）
+                const baseRot = target.baseRot || "90 0 0";
                 
                 container.innerHTML = `
                     <a-entity ${target.id}-logic="showDebugBox: false; ${seedSetting} ${extraParams}">
-                        <a-gltf-model src="#${target.id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
+                        <a-gltf-model src="#${target.id}Model" rotation="${baseRot}" animation-mixer></a-gltf-model>
                     </a-entity>
                 `;
                 this.mainTarget.appendChild(container);

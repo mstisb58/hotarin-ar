@@ -2,7 +2,7 @@ window.AppConfig = {
     // ARコア設定（Ver2相当の基本システム用）
     core: {
         // システム全体で読み込むキャラ名（フォルダ名）のリスト
-        arsystem: ["hotarin", "hotarin2", "train", "sounyan"],
+        arsystem: ["hotarin", "hotarin2", "train", "sounyan", "ybp"],
         masterMind: "./assets/target.mind",
         
         // ★ 鑑賞モードで表示するキャラクターとその出現数・パラメータ
@@ -10,7 +10,8 @@ window.AppConfig = {
             { id: "hotarin", count: 2 },
             { id: "train", params: "posY: 1.0; routeAngle: 0; showBuildings: true; buildingOffsetY: -0.125;" },  // 上り線（建物を表示し、下り線との中間に建物をずらす）
             { id: "train", params: "posY: 0.75; routeAngle: 180; interval: 12; showBuildings: false;" },       // 下り線（建物は非表示）
-            { id: "sounyan" }
+            { id: "sounyan" },
+            { id: "ybp", baseRot: "0 0 0" } // motion.jsの数値を優先するためparams指定を削除
         ]
     },
     
@@ -25,7 +26,8 @@ window.AppConfig = {
         backgroundTargets: [
             { id: "train", params: "posY: 1.0; routeAngle: 0; showBuildings: true; buildingOffsetY: -0.125;" },
             { id: "train", params: "posY: 0.75; routeAngle: 180; interval: 12; showBuildings: false;" },
-            { id: "sounyan" }
+            { id: "sounyan" },
+            { id: "ybp", baseRot: "0 0 0" }
         ],
 
         hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部",

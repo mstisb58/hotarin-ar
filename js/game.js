@@ -24,11 +24,12 @@ window.GameModule = {
             // 文字列指定かオブジェクト指定か判定
             const id = typeof target === 'string' ? target : target.id;
             const extraParams = target.params ? target.params + ';' : '';
+            const baseRot = target.baseRot || "90 0 0";
 
             const bgContainer = document.createElement('a-entity');
             bgContainer.innerHTML = `
                 <a-entity ${id}-logic="showDebugBox: false; ${extraParams}">
-                    <a-gltf-model src="#${id}Model" rotation="90 0 0" animation-mixer></a-gltf-model>
+                    <a-gltf-model src="#${id}Model" rotation="${baseRot}" animation-mixer></a-gltf-model>
                 </a-entity>
             `;
             window.ARCore.mainTarget.appendChild(bgContainer);
