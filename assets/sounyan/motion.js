@@ -4,14 +4,14 @@ AFRAME.registerComponent('sounyan-logic', {
         // --- 位置とサイズのコントロール ---
         // デフォルト値は駅（-1.5, 1.0）の近くになるように設定しています
         posX: { type: 'number', default: -1.5 },       // X座標
-        posY: { type: 'number', default: 0.8 },        // Y座標
+        posY: { type: 'number', default: 0.6 },        // Y座標
         height: { type: 'number', default: 0 },        // Z座標（高さ）
 
         rotX: { type: 'number', default: 0 },          // X軸の回転
         rotY: { type: 'number', default: 0 },          // Y軸の回転
         rotZ: { type: 'number', default: 0 },          // Z軸の回転（向き）
 
-        modelScale: { type: 'number', default: 1 },  // モデルの大きさ
+        modelScale: { type: 'number', default: 0.3 },  // モデルの大きさ
 
         showDebugBox: { type: 'boolean', default: false } // システム統一用
     },
