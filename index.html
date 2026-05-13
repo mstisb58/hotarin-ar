@@ -72,12 +72,31 @@
                 assetManager.appendChild(assetItem);
             });
 
-            // 画面クリック時の虫取り網エフェクトと当たり判定（ゲームモード時のみ動作）
-            window.addEventListener('click', (e) => {
+            let lastTouchTime = 0;
+
+            function handleInteraction(e) {
                 if(currentMode === 'game') {
+                    // タッチとクリックの重複処理を防止
+                    if (e.type === 'touchstart') {
+                        lastTouchTime = Date.now();
+                    } else if (e.type === 'click' && Date.now() - lastTouchTime < 300) {
+                        return;
+                    }
+
                     // UIクリック時は反応させない
                     if(e.target.closest('#mode-toggle-btn') || e.target.closest('#capture-btn') || e.target.closest('#info-btn')) return;
-                    showBugNet(e.clientX, e.clientY);
+                    
+                    // 座標の取得（タッチかマウスか）
+                    let clientX, clientY;
+                    if (e.touches && e.touches.length > 0) {
+                        clientX = e.touches[0].clientX;
+                        clientY = e.touches[0].clientY;
+                    } else {
+                        clientX = e.clientX;
+                        clientY = e.clientY;
+                    }
+
+                    showBugNet(clientX, clientY);
 
                     // 手動Raycast: A-Frameのcursorズレ問題を解消
                     const sceneEl = document.querySelector('a-scene');
@@ -86,8 +105,8 @@
 
                     const mouse = new THREE.Vector2();
                     const rect = sceneEl.canvas.getBoundingClientRect();
-                    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                    mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                    mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
                     const raycaster = new THREE.Raycaster();
                     raycaster.setFromCamera(mouse, camera);
@@ -116,7 +135,11 @@
                         }
                     }
                 }
-            });
+            }
+
+            // 画面クリック・タップ時の虫取り網エフェクトと当たり判定
+            window.addEventListener('click', handleInteraction);
+            window.addEventListener('touchstart', handleInteraction, { passive: false });
 
             // 初期状態は鑑賞モード
             startViewMode();
@@ -180,8 +203,8 @@
             updateScoreUI();
             updateTimerUI();
 
-            // 背景キャラ配置
-            const backgrounds = ["hotarin2", "train", "sounyan"];
+            // 背景キャラ配置（ゲームモード時はhotarin2を削除）
+            const backgrounds = ["train", "sounyan"];
             backgrounds.forEach((id) => {
                 const bgContainer = document.createElement('a-entity');
                 bgContainer.innerHTML = `
