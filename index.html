@@ -37,7 +37,7 @@
         let currentMode = 'view'; // 'view', 'game', 'result'
         let score = 0;
         let hotarinCount = 0;
-        const MAX_HOTARIN = 5;
+        const MAX_HOTARIN = 7; // ★同時に出現できる最大数（元5→7に変更）
         let spawnInterval = null;
         let mainTarget = null;
         
@@ -229,8 +229,9 @@
                 if(hotarinCount < MAX_HOTARIN) {
                     spawnHotarin(mainTarget);
                 }
-            }, 3000); 
+            }, 600); // ★ポップ頻度（ミリ秒）。600 ＝ 0.6秒ごとに1匹出現
             
+            // 最初に1匹すぐに出す
             spawnHotarin(mainTarget);
         }
 
