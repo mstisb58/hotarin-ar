@@ -14,6 +14,10 @@ AFRAME.registerComponent('train-logic', {
         // --- 出現タイミングの設定 ---
         interval: { type: 'number', default: 10 },
         randomRange: { type: 'number', default: 3 },
+        
+        // --- 建物（駅・トンネル）の表示制御 ---
+        showBuildings: { type: 'boolean', default: true },
+        buildingOffsetY: { type: 'number', default: 0 },
 
         debugColor: { type: 'color', default: '#ff00ff' },
         showDebugBox: { type: 'boolean', default: false }
@@ -24,25 +28,27 @@ AFRAME.registerComponent('train-logic', {
         this.el.parentNode.appendChild(this.debugVisual);
         this.isVisible = true;
 
-        // ★ 駅（スタート地点）のエンティティを作成（仮の直方体）
-        this.stationEl = document.createElement('a-entity');
-        // 【将来の差し替え手順】
-        // station.glb が完成したら、以下の geometry と material を削除（またはコメントアウト）し、
-        // 次の1行を有効にしてください。※ index.html の編集は不要です。
-        // this.stationEl.setAttribute('gltf-model', 'assets/train/station.glb');
-        this.stationEl.setAttribute('geometry', { primitive: 'box', width: 0.6, height: 0.6, depth: 0.6 });
-        this.stationEl.setAttribute('material', { color: '#888888', opacity: 1.0 });
-        this.el.parentNode.appendChild(this.stationEl);
+        if (this.data.showBuildings) {
+            // ★ 駅（スタート地点）のエンティティを作成（仮の直方体）
+            this.stationEl = document.createElement('a-entity');
+            // 【将来の差し替え手順】
+            // station.glb が完成したら、以下の geometry と material を削除（またはコメントアウト）し、
+            // 次の1行を有効にしてください。※ index.html の編集は不要です。
+            // this.stationEl.setAttribute('gltf-model', 'assets/train/station.glb');
+            this.stationEl.setAttribute('geometry', { primitive: 'box', width: 0.6, height: 0.6, depth: 0.8 }); // 複線をカバーするためdepthを拡大
+            this.stationEl.setAttribute('material', { color: '#888888', opacity: 1.0 });
+            this.el.parentNode.appendChild(this.stationEl);
 
-        // ★ トンネル（ゴール地点）のエンティティを作成（仮の円柱）
-        this.tunnelEl = document.createElement('a-entity');
-        // 【将来の差し替え手順】
-        // tunnel.glb が完成したら、以下の geometry と material を削除（またはコメントアウト）し、
-        // 次の1行を有効にしてください。※ index.html の編集は不要です。
-        // this.tunnelEl.setAttribute('gltf-model', 'assets/train/tunnel.glb');
-        this.tunnelEl.setAttribute('geometry', { primitive: 'cylinder', radius: 0.35, height: 0.6 });
-        this.tunnelEl.setAttribute('material', { color: '#444444', opacity: 1.0 });
-        this.el.parentNode.appendChild(this.tunnelEl);
+            // ★ トンネル（ゴール地点）のエンティティを作成（仮の円柱）
+            this.tunnelEl = document.createElement('a-entity');
+            // 【将来の差し替え手順】
+            // tunnel.glb が完成したら、以下の geometry と material を削除（またはコメントアウト）し、
+            // 次の1行を有効にしてください。※ index.html の編集は不要です。
+            // this.tunnelEl.setAttribute('gltf-model', 'assets/train/tunnel.glb');
+            this.tunnelEl.setAttribute('geometry', { primitive: 'cylinder', radius: 0.35, height: 0.8 }); // 複線をカバーするためheight(奥行き方向)を拡大
+            this.tunnelEl.setAttribute('material', { color: '#444444', opacity: 1.0 });
+            this.el.parentNode.appendChild(this.tunnelEl);
+        }
 
         // ★ 重要：自身のエンティティにスケールを適用
         const s = this.data.modelScale;
@@ -61,23 +67,28 @@ AFRAME.registerComponent('train-logic', {
             this.debugVisual.setAttribute('visible', false);
         }
 
-        // --- 駅とトンネルの位置と回転を計算して配置 ---
-        const rad = d.routeAngle * Math.PI / 180;
-        
-        // スタート地点（駅: -length/2）
-        const startLocalX = -d.length / 2;
-        const startX = d.posX + (startLocalX * Math.cos(rad));
-        const startY = d.posY + (startLocalX * Math.sin(rad));
-        this.stationEl.setAttribute('position', { x: startX, y: startY, z: d.height });
-        this.stationEl.setAttribute('rotation', { x: 0, y: 0, z: d.routeAngle });
+        if (this.data.showBuildings) {
+            // --- 駅とトンネルの位置と回転を計算して配置 ---
+            const rad = d.routeAngle * Math.PI / 180;
+            const orthoRad = rad + Math.PI / 2; // Y軸方向のオフセット計算用（直角）
+            const offsetY_X = d.buildingOffsetY * Math.cos(orthoRad);
+            const offsetY_Y = d.buildingOffsetY * Math.sin(orthoRad);
+            
+            // スタート地点（駅: -length/2）
+            const startLocalX = -d.length / 2;
+            const startX = d.posX + (startLocalX * Math.cos(rad)) + offsetY_X;
+            const startY = d.posY + (startLocalX * Math.sin(rad)) + offsetY_Y;
+            this.stationEl.setAttribute('position', { x: startX, y: startY, z: d.height });
+            this.stationEl.setAttribute('rotation', { x: 0, y: 0, z: d.routeAngle });
 
-        // ゴール地点（トンネル: +length/2）
-        const endLocalX = d.length / 2;
-        const endX = d.posX + (endLocalX * Math.cos(rad));
-        const endY = d.posY + (endLocalX * Math.sin(rad));
-        this.tunnelEl.setAttribute('position', { x: endX, y: endY, z: d.height });
-        // 仮の円柱が線路を覆うように向きを調整 (X軸を90度回転)
-        this.tunnelEl.setAttribute('rotation', { x: 90, y: 0, z: d.routeAngle });
+            // ゴール地点（トンネル: +length/2）
+            const endLocalX = d.length / 2;
+            const endX = d.posX + (endLocalX * Math.cos(rad)) + offsetY_X;
+            const endY = d.posY + (endLocalX * Math.sin(rad)) + offsetY_Y;
+            this.tunnelEl.setAttribute('position', { x: endX, y: endY, z: d.height });
+            // 仮の円柱が線路を覆うように向きを調整 (X軸を90度回転)
+            this.tunnelEl.setAttribute('rotation', { x: 90, y: 0, z: d.routeAngle });
+        }
     },
 
     getSeedRandom: function (seed) {

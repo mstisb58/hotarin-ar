@@ -1,13 +1,13 @@
 AFRAME.registerComponent('hotarin2-logic', {
     schema: {
-        dioramaWidth: { type: 'number', default: 1}, // 30cm (1だと大きすぎるかも)
+        dioramaWidth: { type: 'number', default: 1 }, // 30cm (1だと大きすぎるかも)
         dioramaDepth: { type: 'number', default: 1 },
         minHeight: { type: 'number', default: 0.05 },
         maxHeight: { type: 'number', default: 0.5 },
-        modelScale: { type: 'number', default: 0.06 }, // ゲーム用：ちびほたりん
+        modelScale: { type: 'number', default: 0.1 }, // ゲーム用：ちびほたりん
         seed: { type: 'number', default: 1 },
-        debugColor: { type: 'color', default: '#ff0000' }, 
-        speed: { type: 'number', default: 2.0 }, // ゲーム用：素早く飛び回る
+        debugColor: { type: 'color', default: '#ff0000' },
+        speed: { type: 'number', default: 1 }, // ゲーム用：素早く飛び回る
         showDebugBox: { type: 'boolean', default: false }
     },
 
@@ -15,7 +15,7 @@ AFRAME.registerComponent('hotarin2-logic', {
         // スケール適用
         const s = this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
-        
+
         // デバッグ用ボックスのエンティティを一つ作っておく
         this.debugVisual = document.createElement('a-entity');
         this.el.parentNode.appendChild(this.debugVisual);
@@ -51,7 +51,7 @@ AFRAME.registerComponent('hotarin2-logic', {
 
     tick: function (time, delta) {
         const d = this.data;
-        const timeOffset = d.seed * 1234.5; 
+        const timeOffset = d.seed * 1234.5;
         const t = (((Date.now() / 1000) + timeOffset) % 100000) * d.speed;
 
         const lx = d.dioramaWidth / 2;
