@@ -2,8 +2,8 @@ window.AppConfig = {
     // ARコア設定（Ver2相当の基本システム用）
     core: {
         // システム全体で読み込むキャラ名（フォルダ名）のリスト
-        arsystem: ["hotarin", "hotarin2", "train", "sounyan", "ybp"],
-        masterMind: "./assets/target.mind",
+        arsystem: ["hotarin", "hotarin2", "train", "sounyan"]//, "ybp"],
+        masterMind: "./assets/target.mind", 
         
         // ★ 鑑賞モードで表示するキャラクターとその出現数・パラメータ
         viewModeTargets: [
