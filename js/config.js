@@ -11,7 +11,7 @@ window.AppConfig = {
             { id: "train", params: "posY: 1.0; routeAngle: 0; showBuildings: true; buildingOffsetY: -0.125;" },  // 上り線（建物を表示し、下り線との中間に建物をずらす）
             { id: "train", params: "posY: 0.75; routeAngle: 180; interval: 12; showBuildings: false;" },       // 下り線（建物は非表示）
             { id: "sounyan" },
-            { id: "ybp", baseRot: "0 0 0" } // motion.jsの数値を優先するためparams指定を削除
+            //{ id: "ybp", baseRot: "0 0 0" } // motion.jsの数値を優先するためparams指定を削除
         ]
     },
     
@@ -27,7 +27,7 @@ window.AppConfig = {
             { id: "train", params: "posY: 1.0; routeAngle: 0; showBuildings: true; buildingOffsetY: -0.125;" },
             { id: "train", params: "posY: 0.75; routeAngle: 180; interval: 12; showBuildings: false;" },
             { id: "sounyan" },
-            { id: "ybp", baseRot: "0 0 0" }
+            //{ id: "ybp", baseRot: "0 0 0" }
         ],
 
         hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部",
