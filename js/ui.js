@@ -55,7 +55,9 @@ window.UIManager = {
     startViewModeUI: function() {
         this.currentMode = 'view';
         if(window.GameModule) window.GameModule.clearTimers();
-        window.ARCore.startViewMode();
+        if (window.AR_MODE !== 'gps') {
+            window.ARCore.startViewMode();
+        }
         
         document.getElementById('result-screen').classList.add('hidden');
         document.getElementById('score-display').classList.add('hidden');
@@ -63,8 +65,12 @@ window.UIManager = {
         document.getElementById('capture-btn').classList.remove('hidden'); 
         
         const toggleBtn = document.getElementById('mode-toggle-btn');
-        toggleBtn.classList.remove('hidden');
-        toggleBtn.innerText = "ゲームモードにする";
+        if (window.AR_MODE === 'gps') {
+            toggleBtn.classList.add('hidden');
+        } else {
+            toggleBtn.classList.remove('hidden');
+            toggleBtn.innerText = "ゲームモードにする";
+        }
     },
     
     startGameModeUI: function() {

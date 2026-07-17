@@ -35,3 +35,32 @@ video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
 
 /* VRボタンを強制非表示 */
 .a-enter-vr { display: none !important; }
+
+/* Mode Switch Button */
+#gps-switch-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    height: 40px;
+    padding: 0 18px;
+    background: linear-gradient(135deg, #4caf50, #2e7d32); /* Green gradient for GPS mode toggle */
+    color: white;
+    border-radius: 20px;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    transition: transform 0.1s, background 0.3s, box-shadow 0.3s;
+    user-select: none;
+}
+#gps-switch-btn:active {
+    transform: scale(0.95);
+}
+#gps-switch-btn.gps-mode-active {
+    background: linear-gradient(135deg, #2196f3, #1565c0); /* Blue gradient when in GPS mode to toggle back */
+}

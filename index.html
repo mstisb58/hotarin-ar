@@ -10,7 +10,6 @@
     
     <!-- 外部ライブラリ -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v7.2.0/dist/aframe-extras.min.js"></script>
 
     <!-- プロジェクトのモジュール群を読み込み -->
@@ -26,6 +25,8 @@
         <h3>Licenses & Credits</h3>
         <p>AR: Mind-AR (MIT) / Models: Meshy (CC BY 4.0)</p>
     </div>
+    <!-- GPS・ジオラマ切り替えUI -->
+    <div id="gps-switch-btn" onclick="switchARMode()">外で見てみる！ (GPS)</div>
     
     <!-- AR・鑑賞用UI -->
     <div id="capture-btn" onclick="takePhoto()"></div>
@@ -56,10 +57,83 @@
         </div>
     </div>
 
-    <!-- AR空間の描画領域 -->
-    <a-scene cursor="rayOrigin: mouse" raycaster="objects: .clickable" renderer="preserveDrawingBuffer: true; alpha: true; colorManagement: true;" vr-mode-ui="enabled: false">
-        <a-assets id="asset-manager"></a-assets>
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-    </a-scene>
+    <!-- AR空間の描画領域のコンテナ -->
+    <div id="scene-container"></div>
+
+    <script>
+        (async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode') || 'diorama';
+            window.AR_MODE = mode;
+
+            // ボタンの表示テキスト・スタイルの切り替え
+            const switchBtn = document.getElementById('gps-switch-btn');
+            if (mode === 'gps') {
+                switchBtn.innerText = "ジオラマモード";
+                switchBtn.classList.add('gps-mode-active');
+            } else {
+                switchBtn.innerText = "外で見てみる！ (GPS)";
+                switchBtn.classList.remove('gps-mode-active');
+            }
+
+            const sceneContainer = document.getElementById('scene-container');
+
+            if (mode === 'gps') {
+                document.querySelector('#header p').innerText = "GPSを取得中...";
+
+                // AR.jsのダイナミックロード
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = "https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js";
+                    s.onload = resolve;
+                    s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+
+                // GPS用のa-scene生成
+                const scene = document.createElement('a-scene');
+                scene.setAttribute('vr-mode-ui', 'enabled: false');
+                scene.setAttribute('embedded', '');
+                scene.setAttribute('arjs', 'sourceType: webcam; videoTexture: true; debugUIEnabled: false;');
+                scene.setAttribute('renderer', 'antialias: true; alpha: true; preserveDrawingBuffer: true; colorManagement: true;');
+
+                scene.innerHTML = `
+                    <a-assets id="asset-manager"></a-assets>
+                    <a-camera gps-new-camera="gpsMinDistance: 5" rotation-reader></a-camera>
+                `;
+                sceneContainer.appendChild(scene);
+            } else {
+                // MindARのダイナミックロード
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js";
+                    s.onload = resolve;
+                    s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+
+                // ジオラマ用のa-scene生成
+                const scene = document.createElement('a-scene');
+                scene.setAttribute('cursor', 'rayOrigin: mouse');
+                scene.setAttribute('raycaster', 'objects: .clickable');
+                scene.setAttribute('renderer', 'preserveDrawingBuffer: true; alpha: true; colorManagement: true;');
+                scene.setAttribute('vr-mode-ui', 'enabled: false');
+
+                scene.innerHTML = `
+                    <a-assets id="asset-manager"></a-assets>
+                    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+                `;
+                sceneContainer.appendChild(scene);
+            }
+
+            // 初期化完了イベントを発火
+            window.dispatchEvent(new CustomEvent('ARSceneReady'));
+        })();
+
+        function switchARMode() {
+            const nextMode = window.AR_MODE === 'gps' ? 'diorama' : 'gps';
+            window.location.search = `?mode=${nextMode}`;
+        }
+    </script>
 </body>
 </html>
