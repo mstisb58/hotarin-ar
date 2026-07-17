@@ -95,7 +95,7 @@
                 scene.setAttribute('vr-mode-ui', 'enabled: false');
                 scene.setAttribute('embedded', '');
                 scene.setAttribute('arjs', 'sourceType: webcam; videoTexture: true; debugUIEnabled: false;');
-                scene.setAttribute('renderer', 'antialias: true; alpha: true; preserveDrawingBuffer: true; colorManagement: true;');
+                scene.setAttribute('renderer', 'antialias: false; devicePixelRatio: 1.5; alpha: true; preserveDrawingBuffer: true; colorManagement: true;');
 
                 scene.innerHTML = `
                     <a-assets id="asset-manager"></a-assets>
@@ -116,7 +116,7 @@
                 const scene = document.createElement('a-scene');
                 scene.setAttribute('cursor', 'rayOrigin: mouse');
                 scene.setAttribute('raycaster', 'objects: .clickable');
-                scene.setAttribute('renderer', 'preserveDrawingBuffer: true; alpha: true; colorManagement: true;');
+                scene.setAttribute('renderer', 'antialias: false; devicePixelRatio: 1.5; alpha: true; preserveDrawingBuffer: true; colorManagement: true;');
                 scene.setAttribute('vr-mode-ui', 'enabled: false');
 
                 scene.innerHTML = `
