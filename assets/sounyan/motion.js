@@ -11,7 +11,7 @@ AFRAME.registerComponent('sounyan-logic', {
         rotY: { type: 'number', default: 0 },          // Y軸の回転
         rotZ: { type: 'number', default: 0 },          // Z軸の回転（向き）
 
-        modelScale: { type: 'number', default: 0.3 },  // モデルの大きさ
+        modelScale: { type: 'number', default: 0.8 },  // モデルの大きさ
 
         showDebugBox: { type: 'boolean', default: false } // システム統一用
     },

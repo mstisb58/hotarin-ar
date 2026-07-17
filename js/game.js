@@ -28,11 +28,11 @@ window.GameModule = {
 
             const bgContainer = document.createElement('a-entity');
             bgContainer.innerHTML = `
-                <a-entity ${id}-logic="showDebugBox: false; ${extraParams}">
+                <a-entity ${id}-logic="showDebugBox: ${window.TestMode}; ${extraParams}">
                     <a-gltf-model src="#${id}Model" rotation="${baseRot}" animation-mixer></a-gltf-model>
                 </a-entity>
             `;
-            window.ARCore.mainTarget.appendChild(bgContainer);
+            window.ARCore.getCurrentAnchor().appendChild(bgContainer);
         });
 
         // ゲーム用タイマー開始
@@ -85,7 +85,7 @@ window.GameModule = {
         const targetId = window.AppConfig.game.catchTarget; // config.jsから獲物を取得
 
         const logicEntity = document.createElement('a-entity');
-        logicEntity.setAttribute(`${targetId}-logic`, `showDebugBox: false; seed: ${seed}`);
+        logicEntity.setAttribute(`${targetId}-logic`, `showDebugBox: ${window.TestMode}; seed: ${seed}`);
         
         const model = document.createElement('a-gltf-model');
         model.setAttribute('src', `#${targetId}Model`);
@@ -101,7 +101,7 @@ window.GameModule = {
         logicEntity.appendChild(sphere);
         container.appendChild(logicEntity);
 
-        window.ARCore.mainTarget.appendChild(container);
+        window.ARCore.getCurrentAnchor().appendChild(container);
 
         // 10秒で自動消滅
         setTimeout(() => {

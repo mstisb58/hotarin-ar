@@ -22,7 +22,7 @@ window.UIManager = {
                 }
 
                 // UIクリック時は反応させない
-                if(e.target.closest('#mode-toggle-btn') || e.target.closest('#capture-btn') || e.target.closest('#info-btn') || e.target.closest('.share-btn') || e.target.closest('.result-buttons')) return;
+                if(e.target.closest('#mode-toggle-btn') || e.target.closest('#capture-btn') || e.target.closest('#info-btn') || e.target.closest('#settings-btn') || e.target.closest('#settings-modal') || e.target.closest('.share-btn') || e.target.closest('.result-buttons')) return;
                 
                 // 座標の取得
                 let clientX, clientY;
@@ -241,6 +241,28 @@ window.UIManager = {
         link.download = `ar-capture-${Date.now()}.png`;
         link.href = canvas.toDataURL();
         link.click();
+    },
+
+    handleTestModeChange: function(checked) {
+        if (window.AR_MODE === 'gps') {
+            alert("GPSの基準点を再設定するため、ページをリロードします。");
+            window.location.reload();
+        } else {
+            const scene = document.querySelector('a-scene');
+            if (scene) {
+                const components = ['hotarin-logic', 'hotarin2-logic', 'train-logic', 'sounyan-logic', 'ybp-logic'];
+                components.forEach(comp => {
+                    const entities = scene.querySelectorAll(`[${comp}]`);
+                    entities.forEach(el => {
+                        el.setAttribute(comp, 'showDebugBox', checked);
+                    });
+                });
+            }
+            // 仮想アンカーの親付け替え同期処理を追加
+            if (window.ARCore && typeof window.ARCore.updateAnchorParenting === 'function') {
+                window.ARCore.updateAnchorParenting();
+            }
+        }
     }
 };
 

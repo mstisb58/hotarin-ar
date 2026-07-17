@@ -3,8 +3,8 @@ AFRAME.registerComponent('hotarin2-logic', {
         dioramaWidth: { type: 'number', default: 1 }, // 30cm (1だと大きすぎるかも)
         dioramaDepth: { type: 'number', default: 1 },
         minHeight: { type: 'number', default: 0.05 },
-        maxHeight: { type: 'number', default: 0.5 },
-        modelScale: { type: 'number', default: 0.1 }, // ゲーム用：ちびほたりん
+        maxHeight: { type: 'number', default: 0.3 },
+        modelScale: { type: 'number', default: 0.4 }, // ゲーム用：ちびほたりん
         seed: { type: 'number', default: 1 },
         debugColor: { type: 'color', default: '#ff0000' },
         speed: { type: 'number', default: 1 }, // ゲーム用：素早く飛び回る
@@ -71,5 +71,32 @@ AFRAME.registerComponent('hotarin2-logic', {
 
         this.el.object3D.position.set(px, py, pz);
         this.el.object3D.rotation.set(0, 0, angle * Math.PI / 180);
+
+        // GPSテストモード時、中心（0, 0, 0）から自機までの緑線を描画する
+        if (window.AR_MODE === 'gps' && window.TestMode) {
+            if (!this.lineEl) {
+                this.lineEl = document.createElement('a-entity');
+                this.el.parentNode.appendChild(this.lineEl);
+            }
+            this.lineEl.setAttribute('line', {
+                start: '0 0 0',
+                end: `${px} ${py} ${pz}`,
+                color: '#00ff00'
+            });
+            this.lineEl.setAttribute('visible', true);
+        } else {
+            if (this.lineEl) {
+                this.lineEl.setAttribute('visible', false);
+            }
+        }
+    },
+
+    remove: function () {
+        if (this.lineEl && this.lineEl.parentNode) {
+            this.lineEl.parentNode.removeChild(this.lineEl);
+        }
+        if (this.debugVisual && this.debugVisual.parentNode) {
+            this.debugVisual.parentNode.removeChild(this.debugVisual);
+        }
     }
 });

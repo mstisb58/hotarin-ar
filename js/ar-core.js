@@ -32,18 +32,17 @@ window.ARCore = {
                     
                     const waterHallLat = 35.454332476881056;
                     const waterHallLon = 139.59818021935607;
-                    const dist = this.getDistance(lat, lon, waterHallLat, waterHallLon);
                     
                     let centerLat = waterHallLat;
                     let centerLon = waterHallLon;
                     
-                    if (dist > 500) {
-                        console.log(`ユーザーがYBPから離れています（距離: ${Math.round(dist)}m）。テスト用に現在地を中心とします。`);
+                    if (window.TestMode) {
+                        console.log("テストモードON: 現在地をYBPの中心（原点）とみなして配置します。");
                         headerText.innerText = "GPSモード (テスト表示中)";
                         centerLat = lat;
                         centerLon = lon;
                     } else {
-                        console.log("ユーザーがYBP付近にいます。水のホールを中心とします。");
+                        console.log("テストモードOFF: リアルGPSで動作（現地でのみ見えます）。");
                         headerText.innerText = "GPSモード: YBP水のホールに出現中！";
                     }
                     
@@ -58,14 +57,33 @@ window.ARCore = {
             );
         } else {
             headerText.innerText = "ターゲットを映してね！";
-            scene.setAttribute('mindar-image', `imageTargetSrc: ${window.AppConfig.core.masterMind}; uiScanning: no;`);
 
             this.mainTarget = document.createElement('a-entity');
             this.mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
             scene.appendChild(this.mainTarget);
 
-            this.mainTarget.addEventListener("targetFound", () => { headerText.innerText = "ジオラマが起動しました！"; });
-            this.mainTarget.addEventListener("targetLost", () => { headerText.innerText = "ターゲットを映してね！"; });
+            // テストモード用の仮想アンカーをカメラの下に作成
+            const camera = document.querySelector('a-camera');
+            this.virtualAnchor = document.createElement('a-entity');
+            this.virtualAnchor.setAttribute('id', 'virtual-anchor');
+            this.virtualAnchor.setAttribute('position', '0 -0.2 -1.2'); // カメラ前方1.2m、少し下に配置
+            this.virtualAnchor.setAttribute('rotation', '0 0 0');
+            if (camera) {
+                camera.appendChild(this.virtualAnchor);
+            }
+
+            this.isTracking = false;
+
+            this.mainTarget.addEventListener("targetFound", () => { 
+                headerText.innerText = "ジオラマが起動しました！"; 
+                this.isTracking = true;
+                this.updateAnchorParenting();
+            });
+            this.mainTarget.addEventListener("targetLost", () => { 
+                headerText.innerText = "ターゲットを映してね！"; 
+                this.isTracking = false;
+                this.updateAnchorParenting();
+            });
         }
     },
 
@@ -105,9 +123,15 @@ window.ARCore = {
     },
     
     clearScene: function() {
-        if (!this.mainTarget) return;
-        while (this.mainTarget.firstChild) {
-            this.mainTarget.removeChild(this.mainTarget.firstChild);
+        if (this.mainTarget) {
+            while (this.mainTarget.firstChild) {
+                this.mainTarget.removeChild(this.mainTarget.firstChild);
+            }
+        }
+        if (this.virtualAnchor) {
+            while (this.virtualAnchor.firstChild) {
+                this.virtualAnchor.removeChild(this.virtualAnchor.firstChild);
+            }
         }
     },
     
@@ -129,13 +153,33 @@ window.ARCore = {
                 const baseRot = target.baseRot || "90 0 0";
                 
                 container.innerHTML = `
-                    <a-entity ${target.id}-logic="showDebugBox: false; ${seedSetting} ${extraParams}">
+                    <a-entity ${target.id}-logic="showDebugBox: ${window.TestMode}; ${seedSetting} ${extraParams}">
                         <a-gltf-model src="#${target.id}Model" rotation="${baseRot}" animation-mixer></a-gltf-model>
                     </a-entity>
                 `;
-                this.mainTarget.appendChild(container);
+                this.getCurrentAnchor().appendChild(container);
             }
         });
+    },
+
+    getCurrentAnchor: function() {
+        if (window.AR_MODE === 'gps') {
+            return this.mainTarget;
+        }
+        if (window.TestMode && !this.isTracking) {
+            return this.virtualAnchor;
+        }
+        return this.mainTarget;
+    },
+
+    updateAnchorParenting: function() {
+        if (window.AR_MODE === 'gps') return;
+        const targetAnchor = this.getCurrentAnchor();
+        const otherAnchor = (targetAnchor === this.mainTarget) ? this.virtualAnchor : this.mainTarget;
+        
+        while (otherAnchor.firstChild) {
+            targetAnchor.appendChild(otherAnchor.firstChild);
+        }
     }
 };
 

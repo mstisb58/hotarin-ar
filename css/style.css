@@ -4,7 +4,40 @@ body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
 #info-btn { position: fixed; top: 20px; right: 20px; width: 40px; height: 40px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; z-index: 1100; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; border: 2px solid white; }
 #credits-info { position: fixed; top: 80px; right: 20px; width: 260px; background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; z-index: 1050; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 0.8rem; line-height: 1.4; color: #333; }
 .hidden { display: none !important; }
-video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
+
+#scene-container {
+    position: fixed;
+    top: 80px;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 80px);
+    overflow: hidden;
+    z-index: 1;
+}
+
+#shared-webcam {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    z-index: 0;
+}
+
+.a-canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 2; /* 共通ビデオの上に重ねる */
+}
+
+/* ライブラリが自動生成するカメラビデオやローディングUI等を非表示にする */
+#arjs-webcam, video.mindar-image-video, .mindar-image-ui-container {
+    display: none !important;
+}
 
 /* ボタン類 */
 #capture-btn { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; background: white; border-radius: 50%; z-index: 1001; border: 5px solid #ccc; cursor: pointer; }
@@ -63,4 +96,102 @@ video, .a-canvas { top: 80px !important; height: calc(100% - 80px) !important; }
 }
 #gps-switch-btn.gps-mode-active {
     background: linear-gradient(135deg, #2196f3, #1565c0); /* Blue gradient when in GPS mode to toggle back */
+}
+
+/* 設定ボタン（歯車） */
+#settings-btn {
+    position: fixed;
+    top: 20px;
+    right: 75px; /* info-btn の左隣に配置 */
+    width: 40px;
+    height: 40px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border-radius: 50%;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    border: 2px solid white;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    user-select: none;
+    transition: transform 0.1s;
+}
+#settings-btn:active {
+    transform: scale(0.9);
+}
+
+/* 設定モーダル */
+#settings-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 4000; /* 最前面に表示 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-content {
+    background: white;
+    color: #333;
+    padding: 25px;
+    border-radius: 15px;
+    width: 80%;
+    max-width: 320px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    text-align: center;
+}
+
+.settings-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    color: #333;
+}
+
+.settings-item {
+    margin-bottom: 25px;
+    font-size: 1.1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.settings-item label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+}
+
+.settings-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.settings-close-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 30px;
+    background: #888;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+
+.settings-close-btn:active {
+    transform: scale(0.98);
 }

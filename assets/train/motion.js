@@ -9,7 +9,7 @@ AFRAME.registerComponent('train-logic', {
         routeAngle: { type: 'number', default: 0 },   //線路の角度
         faceOffset: { type: 'number', default: 0 },   //正面のオフセット
 
-        modelScale: { type: 'number', default: 0.4 }, //電車のサイズ
+        modelScale: { type: 'number', default: 0.8 }, //電車のサイズ
 
         // --- 出現タイミングの設定 ---
         interval: { type: 'number', default: 10 },
@@ -19,7 +19,7 @@ AFRAME.registerComponent('train-logic', {
         showBuildings: { type: 'boolean', default: true },
         buildingOffsetY: { type: 'number', default: 0 },
 
-        debugColor: { type: 'color', default: '#ff00ff' },
+        debugColor: { type: 'color', default: '#00ff00' },
         showDebugBox: { type: 'boolean', default: false }
     },
 
