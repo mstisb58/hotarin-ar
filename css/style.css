@@ -35,8 +35,19 @@ body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
     z-index: 2; /* 共通ビデオの上に重ねる */
 }
 
-/* ライブラリが自動生成するカメラビデオやローディングUI等を非表示にする */
-#arjs-webcam, video.mindar-image-video, .mindar-image-ui-container {
+/* ライブラリが自動生成するカメラビデオを非表示（描画更新は維持しつつ画面外へ退避） */
+#arjs-webcam, video.mindar-image-video {
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    width: 1280px !important;
+    height: 720px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* UIコンテナなどの要素は表示不要なので display: none */
+.mindar-image-ui-container {
     display: none !important;
 }
 

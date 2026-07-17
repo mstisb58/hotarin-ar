@@ -11,14 +11,14 @@ AFRAME.registerComponent('sounyan-logic', {
         rotY: { type: 'number', default: 0 },          // Y軸の回転
         rotZ: { type: 'number', default: 0 },          // Z軸の回転（向き）
 
-        modelScale: { type: 'number', default: 0.8 },  // モデルの大きさ
+        modelScale: { type: 'number', default: 0.3 },  // モデルの大きさ
 
         showDebugBox: { type: 'boolean', default: false } // システム統一用
     },
 
     init: function () {
-        // ★ 初期スケールを適用
-        const s = this.data.modelScale;
+        // ★ 初期スケールを適用 (GPSモードの時は0.8(約2.66倍)、ジオラマ時は0.3)
+        const s = (window.AR_MODE === 'gps') ? 0.8 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
 
         // ★ 初期位置と回転を適用
@@ -26,8 +26,8 @@ AFRAME.registerComponent('sounyan-logic', {
     },
 
     update: function () {
-        // index.html等からパラメータが変更された場合に位置や大きさを再適用する
-        const s = this.data.modelScale;
+        // index.html等からパラメータが変更された場合に位置や大きさを再適用する (GPSモード時は0.8)
+        const s = (window.AR_MODE === 'gps') ? 0.8 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
         this.applyTransform();
     },

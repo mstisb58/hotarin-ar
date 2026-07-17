@@ -3,8 +3,8 @@ AFRAME.registerComponent('hotarin2-logic', {
         dioramaWidth: { type: 'number', default: 1 }, // 30cm (1だと大きすぎるかも)
         dioramaDepth: { type: 'number', default: 1 },
         minHeight: { type: 'number', default: 0.05 },
-        maxHeight: { type: 'number', default: 0.3 },
-        modelScale: { type: 'number', default: 0.4 }, // ゲーム用：ちびほたりん
+        maxHeight: { type: 'number', default: 0.5 },
+        modelScale: { type: 'number', default: 0.1 }, // ゲーム用：ちびほたりん
         seed: { type: 'number', default: 1 },
         debugColor: { type: 'color', default: '#ff0000' },
         speed: { type: 'number', default: 1 }, // ゲーム用：素早く飛び回る
@@ -12,9 +12,12 @@ AFRAME.registerComponent('hotarin2-logic', {
     },
 
     init: function () {
-        // スケール適用
-        const s = this.data.modelScale;
+        // スケール適用 (GPSモードの時は0.4(4倍)、ジオラマ時は0.1)
+        const s = (window.AR_MODE === 'gps') ? 0.4 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
+        
+        // 高度の上限 (GPSモード時は0.3、ジオラマ時は0.5)
+        this.maxHeight = (window.AR_MODE === 'gps') ? 0.3 : this.data.maxHeight;
 
         // デバッグ用ボックスのエンティティを一つ作っておく
         this.debugVisual = document.createElement('a-entity');
@@ -24,8 +27,8 @@ AFRAME.registerComponent('hotarin2-logic', {
     update: function () {
         const d = this.data;
         if (d.showDebugBox) {
-            const zRange = Math.abs(d.maxHeight - d.minHeight);
-            const zCenter = (d.maxHeight + d.minHeight) / 2;
+            const zRange = Math.abs(this.maxHeight - d.minHeight);
+            const zCenter = (this.maxHeight + d.minHeight) / 2;
 
             // 形状を設定
             this.debugVisual.setAttribute('geometry', {
@@ -56,8 +59,8 @@ AFRAME.registerComponent('hotarin2-logic', {
 
         const lx = d.dioramaWidth / 2;
         const ly = d.dioramaDepth / 2;
-        const cz = (d.maxHeight + d.minHeight) / 2;
-        const rz = (d.maxHeight - d.minHeight) / 2;
+        const cz = (this.maxHeight + d.minHeight) / 2;
+        const rz = (this.maxHeight - d.minHeight) / 2;
 
         // 動きを複雑で不規則にする（サイン波の係数を複雑化）
         const px = ((Math.sin(t * 1.6) + Math.cos(t * 2.2)) / 2) * lx;

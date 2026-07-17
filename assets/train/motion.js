@@ -9,7 +9,7 @@ AFRAME.registerComponent('train-logic', {
         routeAngle: { type: 'number', default: 0 },   //線路の角度
         faceOffset: { type: 'number', default: 0 },   //正面のオフセット
 
-        modelScale: { type: 'number', default: 0.8 }, //電車のサイズ
+        modelScale: { type: 'number', default: 0.4 }, //電車のサイズ
 
         // --- 出現タイミングの設定 ---
         interval: { type: 'number', default: 10 },
@@ -50,8 +50,8 @@ AFRAME.registerComponent('train-logic', {
             this.el.parentNode.appendChild(this.tunnelEl);
         }
 
-        // ★ 重要：自身のエンティティにスケールを適用
-        const s = this.data.modelScale;
+        // ★ 重要：自身のエンティティにスケールを適用 (GPSモードの時は0.8(2倍)、ジオラマ時は0.4)
+        const s = (window.AR_MODE === 'gps') ? 0.8 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
     },
 
