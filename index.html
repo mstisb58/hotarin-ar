@@ -140,7 +140,7 @@
             // カメラの追加
             const camera = document.createElement('a-camera');
             if (mode === 'gps') {
-                camera.setAttribute('gps-camera', 'gpsMinDistance: 5; initialPositionAsOrigin: true;');
+                camera.setAttribute('gps-camera', 'gpsMinDistance: 5;');
                 camera.setAttribute('rotation-reader', '');
             } else {
                 camera.setAttribute('position', '0 0 0');
