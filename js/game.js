@@ -23,6 +23,8 @@ window.GameModule = {
         backgrounds.forEach((target) => {
             // 文字列指定かオブジェクト指定か判定
             const id = typeof target === 'string' ? target : target.id;
+            // 電車と駅(train)は非表示にする
+            if (id === 'train') return;
             const extraParams = target.params ? target.params + ';' : '';
             const baseRot = target.baseRot || "90 0 0";
 

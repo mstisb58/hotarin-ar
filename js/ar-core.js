@@ -131,6 +131,9 @@ window.ARCore = {
         
         // config.js の viewModeTargets リストに基づいて配置
         window.AppConfig.core.viewModeTargets.forEach((target) => {
+            // 電車と駅(train)は非表示にする
+            if (target.id === 'train') return;
+
             const spawnCount = target.count || 1;
             
             for (let i = 0; i < spawnCount; i++) {

@@ -280,7 +280,7 @@ window.UIManager = {
         const show = window.TestMode && (window.TestShowBounds !== false);
         const scene = document.querySelector('a-scene');
         if (scene) {
-            const components = ['hotarin-logic', 'hotarin2-logic', 'train-logic', 'sounyan-logic', 'ybp-logic'];
+            const components = ['hotarin-logic', 'hotarin2-logic'];
             components.forEach(comp => {
                 const entities = scene.querySelectorAll(`[${comp}]`);
                 entities.forEach(el => {
@@ -307,7 +307,6 @@ window.UIManager = {
             : ((window.ARCore && window.ARCore.isTracking) ? 'Physical Target Recognized' : ((window.TestVirtualNFT !== false) ? 'Virtual Target Center' : 'Searching Target'));
 
         const hotarinScale = (window.AR_MODE === 'gps') ? '0.30' : '0.15';
-        const trainScale = (window.AR_MODE === 'gps') ? '0.25' : '0.40';
 
         hudEl.innerHTML = `
             <h4>📐 Debug & Size Info</h4>
@@ -315,17 +314,18 @@ window.UIManager = {
             <div><b>Target State:</b> ${nftStatus}</div>
             <div style="margin-top:4px;"><b>Hotarin Range:</b> 1.0m × 1.0m × 0.45m</div>
             <div><b>Hotarin Scale:</b> ${hotarinScale}</div>
-            <div><b>Train Line Length:</b> 3.0m</div>
-            <div><b>Train Scale:</b> ${trainScale}</div>
         `;
     },
 
     fetchGitHubVersion: async function() {
         try {
-            const res = await fetch('https://api.github.com/repos/mstisb58/hotarin-ar/commits/main', { cache: 'no-cache' });
+            let res = await fetch('https://api.github.com/repos/mstisb58/hotarin-ar/commits/master', { cache: 'no-cache' });
+            if (!res.ok) {
+                res = await fetch('https://api.github.com/repos/mstisb58/hotarin-ar/commits/HEAD', { cache: 'no-cache' });
+            }
             if (!res.ok) throw new Error('API fetch error');
             const data = await res.json();
-            const commitSha = data.sha ? data.sha.substring(0, 7) : '6781b10';
+            const commitSha = data.sha ? data.sha.substring(0, 7) : '9fb0a8a';
             
             const gitCommitEl = document.getElementById('git-commit');
             const gitCommitLink = document.getElementById('git-commit-link');
@@ -333,7 +333,7 @@ window.UIManager = {
 
             if (gitCommitEl) gitCommitEl.innerText = commitSha;
             if (gitCommitLink) gitCommitLink.href = `https://github.com/mstisb58/hotarin-ar/commit/${data.sha}`;
-            if (gitVerEl) gitVerEl.innerText = window.AppConfig ? window.AppConfig.version : 'v4.12.2';
+            if (gitVerEl) gitVerEl.innerText = window.AppConfig ? window.AppConfig.version : 'v4.13';
         } catch (e) {
             console.warn('Could not fetch latest commit from GitHub API, using fallback:', e);
             const gitCommitEl = document.getElementById('git-commit');

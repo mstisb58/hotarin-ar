@@ -1,7 +1,7 @@
 window.AppConfig = {
     // アプリケーションバージョン設定（GitHub Pages表示用）
-    version: "v4.12.2",
-    commitHash: "6781b10",
+    version: "v4.13",
+    commitHash: "9fb0a8a",
     repoUrl: "https://github.com/mstisb58/hotarin-ar",
 
     // テストモード設定の初期値
@@ -12,17 +12,13 @@ window.AppConfig = {
 
     // ARコア設定（Ver2相当の基本システム用）
     core: {
-        // システム全体で読み込むキャラ名（フォルダ名）のリスト
-        arsystem: ["hotarin", "hotarin2", "train", "sounyan"],//, "ybp"],
+        // システム全体で読み込むキャラ名（フォルダ名）のリスト（ほたりん専用に最適化）
+        arsystem: ["hotarin", "hotarin2"],
         masterMind: "./assets/target.mind", 
         
         // ★ 鑑賞モードで表示するキャラクターとその出現数・パラメータ
         viewModeTargets: [
-            { id: "hotarin", count: 2 },
-            { id: "train", params: "posY: 1.0; routeAngle: 0; showBuildings: true; buildingOffsetY: -0.125;" },  // 上り線（建物を表示し、下り線との中間に建物をずらす）
-            { id: "train", params: "posY: 0.75; routeAngle: 180; interval: 12; showBuildings: false;" },       // 下り線（建物は非表示）
-            { id: "sounyan" }
-            //{ id: "ybp", baseRot: "0 0 0" } // motion.jsの数値を優先するためparams指定を削除
+            { id: "hotarin", count: 2 }
         ]
     },
     
@@ -35,10 +31,7 @@ window.AppConfig = {
         // ★ ゲームモードで出現する獲物と、背景として残すキャラクター
         catchTarget: "hotarin2", 
         backgroundTargets: [
-            { id: "train", params: "posY: 1.0; routeAngle: 0; showBuildings: true; buildingOffsetY: -0.125;" },
-            { id: "train", params: "posY: 0.75; routeAngle: 180; interval: 12; showBuildings: false;" },
-            { id: "sounyan" }
-            //{ id: "ybp", baseRot: "0 0 0" }
+            { id: "hotarin", count: 1 }
         ],
 
         hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部",
