@@ -62,7 +62,16 @@ window.ARCore = {
             this.mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
             scene.appendChild(this.mainTarget);
 
-            this.virtualAnchor = null;
+            // テストモード用の仮想アンカーをカメラの下に作成
+            const camera = document.querySelector('a-camera');
+            this.virtualAnchor = document.createElement('a-entity');
+            this.virtualAnchor.setAttribute('id', 'virtual-anchor');
+            this.virtualAnchor.setAttribute('position', '0 -0.2 -1.2'); // カメラ前方1.2m、少し下に配置
+            this.virtualAnchor.setAttribute('rotation', '0 0 0');
+            if (camera) {
+                camera.appendChild(this.virtualAnchor);
+            }
+
             this.isTracking = false;
 
             this.mainTarget.addEventListener("targetFound", () => { 
@@ -162,25 +171,11 @@ window.ARCore = {
         }
         const allowVirtualNFT = window.TestMode && (window.TestVirtualNFT !== false);
         if (allowVirtualNFT && !this.isTracking) {
-            // 仮想アンカーの遅延生成とアタッチ
-            if (!this.virtualAnchor) {
-                this.virtualAnchor = document.createElement('a-entity');
-                this.virtualAnchor.setAttribute('id', 'virtual-anchor');
-                this.virtualAnchor.setAttribute('position', '0 -0.2 -1.2'); // カメラ前方1.2m、少し下に配置
-                this.virtualAnchor.setAttribute('rotation', '0 0 0');
-            }
-            if (!this.virtualAnchor.parentNode) {
+            if (this.virtualAnchor && !this.virtualAnchor.parentNode) {
                 const camera = document.querySelector('a-camera');
-                if (camera) {
-                    camera.appendChild(this.virtualAnchor);
-                } else {
-                    const scene = document.querySelector('a-scene');
-                    if (scene) {
-                        scene.appendChild(this.virtualAnchor);
-                    }
-                }
+                if (camera) camera.appendChild(this.virtualAnchor);
             }
-            return this.virtualAnchor;
+            return this.virtualAnchor || this.mainTarget;
         }
         return this.mainTarget;
     },
