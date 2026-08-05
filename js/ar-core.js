@@ -4,8 +4,8 @@ window.ARCore = {
     virtualAnchor: null,
     isTracking: false,
 
-    init: function() {
-        this.loadAssets();
+    init: async function() {
+        await this.loadAssets();
         if (window.AR_MODE === 'gps') {
             this.initGPSMode();
         } else {
@@ -15,16 +15,28 @@ window.ARCore = {
 
     loadAssets: function() {
         const assetManager = document.querySelector('#asset-manager');
-        window.AppConfig.core.arsystem.forEach((id) => {
+        const componentLoads = window.AppConfig.core.arsystem.map((id) => {
+            const componentName = `${id}-logic`;
             const script = document.createElement('script');
-            script.src = `assets/${id}/motion.js`;
-            document.head.appendChild(script);
-
             const assetItem = document.createElement('a-asset-item');
+
             assetItem.setAttribute('id', `${id}Model`);
             assetItem.setAttribute('src', `assets/${id}/model.glb`);
             assetManager.appendChild(assetItem);
+
+            if (AFRAME.components[componentName]) {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                script.src = `assets/${id}/motion.js`;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`${componentName} の読み込みに失敗しました`));
+                document.head.appendChild(script);
+            });
         });
+
+        return Promise.all(componentLoads);
     },
 
     initGPSMode: function() {
@@ -109,22 +121,24 @@ window.ARCore = {
     createTargetEntity: function(target, options = {}) {
         const definition = typeof target === 'string' ? { id: target } : target;
         const container = document.createElement('a-entity');
-        const logicEntity = document.createElement('a-entity');
-        const model = document.createElement('a-gltf-model');
         const componentSettings = [`showDebugBox: ${this.shouldShowDebugBounds()}`];
 
         if (options.seed !== undefined) componentSettings.push(`seed: ${options.seed}`);
         if (definition.params) componentSettings.push(definition.params);
 
         container.setAttribute('visible', 'true');
-        logicEntity.setAttribute(`${definition.id}-logic`, componentSettings.join('; '));
-        model.setAttribute('src', `#${definition.id}Model`);
-        model.setAttribute('rotation', definition.baseRot || '90 0 0');
-        model.setAttribute('animation-mixer', '');
-        logicEntity.appendChild(model);
-        container.appendChild(logicEntity);
+        // 過去の動作版と同じ生成方法にし、A-Frameにまとめて初期化させる。
+        container.innerHTML = `
+            <a-entity ${definition.id}-logic="${componentSettings.join('; ')}">
+                <a-gltf-model
+                    src="#${definition.id}Model"
+                    rotation="${definition.baseRot || '90 0 0'}"
+                    animation-mixer>
+                </a-gltf-model>
+            </a-entity>
+        `;
 
-        return { container, logicEntity };
+        return { container, logicEntity: container.firstElementChild };
     },
 
     clearScene: function() {
@@ -193,11 +207,17 @@ window.ARCore = {
     }
 };
 
-window.addEventListener('ARSceneReady', () => {
-    window.ARCore.init();
-    if (window.UIManager) {
-        window.UIManager.init();
-    } else if (window.AR_MODE !== 'gps') {
-        window.ARCore.startViewMode();
+window.addEventListener('ARSceneReady', async () => {
+    try {
+        await window.ARCore.init();
+        if (window.UIManager) {
+            window.UIManager.init();
+        } else if (window.AR_MODE !== 'gps') {
+            window.ARCore.startViewMode();
+        }
+    } catch (error) {
+        console.error('ARの初期化に失敗しました。', error);
+        const headerText = document.querySelector('#header p');
+        if (headerText) headerText.innerText = 'ARの読み込みに失敗しました';
     }
 });
