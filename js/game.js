@@ -28,7 +28,7 @@ window.GameModule = {
             if (id === 'train') return;
 
             const { container } = window.ARCore.createTargetEntity(target);
-            window.ARCore.getCurrentAnchor().appendChild(container);
+            window.ARCore.getActiveAnchor().appendChild(container);
         });
 
         // ゲーム用タイマー開始
@@ -48,6 +48,8 @@ window.GameModule = {
         }, window.AppConfig.game.spawnInterval); 
         
         this.spawnTarget();
+        // 実装↔テスト切替後のアンカー表示状態を、ゲーム側にも必ず反映する。
+        window.ARCore.applyEnvironmentState();
     },
 
     endGame: function() {
@@ -88,7 +90,7 @@ window.GameModule = {
         sphere.setAttribute('material', 'opacity: 0; transparent: true');
         
         logicEntity.appendChild(sphere);
-        window.ARCore.getCurrentAnchor().appendChild(targetContainer);
+        window.ARCore.getActiveAnchor().appendChild(targetContainer);
 
         // 10秒で自動消滅
         setTimeout(() => {

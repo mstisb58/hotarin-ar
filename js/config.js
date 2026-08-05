@@ -6,8 +6,32 @@ window.AppConfig = {
 
     // テストモード設定の初期値
     testModeDefaults: {
-        showBounds: true,
-        virtualNFT: true
+        showBounds: true
+    },
+
+    // MindARではローカル1単位が認識画像の幅。テスト時も同じ寸法感に合わせる。
+    diorama: {
+        targetWidthMeters: 0.3,
+        testAnchorDistanceMeters: 1.2,
+        testAnchorVerticalOffsetMeters: -0.1
+    },
+
+    // モーションとデバッグ表示で共有する、NFT幅を1とした相対寸法。
+    characters: {
+        hotarin: {
+            dioramaWidth: 1,
+            dioramaDepth: 1,
+            minHeight: 0.05,
+            maxHeight: 0.3,
+            modelScale: 0.6
+        },
+        hotarin2: {
+            dioramaWidth: 1,
+            dioramaDepth: 1,
+            minHeight: 0.05,
+            maxHeight: 0.3,
+            modelScale: 0.4
+        }
     },
 
     // ARコア設定（Ver2相当の基本システム用）
@@ -55,33 +79,3 @@ window.AppConfig = {
         ]
     }
 };
-
-// プログラム上のモード階層:
-// 1. 空間（ジオラマ / 外）→ 2. 環境（テスト / 実装）→ 3. 体験（鑑賞 / ゲーム）
-// UIでは操作頻度の高い体験切り替えを前面に出すが、判定はこの順序で行う。
-window.AppMode = {
-    get spaceMode() {
-        return window.AR_MODE === 'gps' ? 'outdoor' : 'diorama';
-    },
-
-    get environmentMode() {
-        return window.TestMode ? 'test' : 'implementation';
-    },
-
-    get experienceMode() {
-        return window.UIManager ? window.UIManager.experienceMode : 'view';
-    },
-
-    get hierarchy() {
-        return [this.spaceMode, this.environmentMode, this.experienceMode];
-    },
-
-    isOutdoor: function() {
-        return this.spaceMode === 'outdoor';
-    },
-
-    isTest: function() {
-        return this.environmentMode === 'test';
-    }
-};
-

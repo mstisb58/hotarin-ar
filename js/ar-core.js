@@ -1,8 +1,9 @@
 // ARシーンの初期化・配置・アンカー切り替えを管理する。
 window.ARCore = {
-    mainTarget: null,
+    physicalAnchor: null,
     virtualAnchor: null,
-    isTracking: false,
+    outdoorAnchor: null,
+    physicalTargetFound: false,
 
     init: async function() {
         await this.loadAssets();
@@ -76,27 +77,35 @@ window.ARCore = {
     initDioramaMode: function() {
         const scene = document.querySelector('a-scene');
         const camera = document.querySelector('a-camera') || scene;
+        const diorama = window.AppConfig.diorama;
 
-        this.mainTarget = document.createElement('a-entity');
-        this.mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
-        scene.appendChild(this.mainTarget);
+        this.physicalAnchor = document.createElement('a-entity');
+        this.physicalAnchor.setAttribute('mindar-image-target', 'targetIndex: 0');
+        scene.appendChild(this.physicalAnchor);
 
-        // NFTなしでも確認できるよう、カメラ正面1.2mに仮想アンカーを置く。
+        // 30cm幅のNFTを1.2m先に置いた状態と同じ座標系を作る。
         this.virtualAnchor = document.createElement('a-entity');
         this.virtualAnchor.setAttribute('id', 'virtual-anchor');
-        this.virtualAnchor.setAttribute('position', '0 -0.1 -1.2');
+        this.virtualAnchor.setAttribute(
+            'position',
+            `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
+        );
+        this.virtualAnchor.setAttribute(
+            'scale',
+            `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
+        );
         camera.appendChild(this.virtualAnchor);
 
-        this.isTracking = false;
-        this.mainTarget.addEventListener('targetFound', () => {
-            this.isTracking = true;
-            this.updateAnchorState();
+        this.physicalTargetFound = false;
+        this.physicalAnchor.addEventListener('targetFound', () => {
+            this.physicalTargetFound = true;
+            this.applyEnvironmentState();
         });
-        this.mainTarget.addEventListener('targetLost', () => {
-            this.isTracking = false;
-            this.updateAnchorState();
+        this.physicalAnchor.addEventListener('targetLost', () => {
+            this.physicalTargetFound = false;
+            this.applyEnvironmentState();
         });
-        this.updateAnchorState();
+        this.applyEnvironmentState();
     },
 
     initGPSScene: function(latitude, longitude) {
@@ -109,7 +118,7 @@ window.ARCore = {
         gpsEntity.setAttribute('rotation', '-90 0 0');
         gpsEntity.setAttribute('scale', `${worldScale} ${worldScale} ${worldScale}`);
 
-        this.mainTarget = gpsEntity;
+        this.outdoorAnchor = gpsEntity;
         scene.appendChild(gpsEntity);
         this.startViewMode();
     },
@@ -122,6 +131,13 @@ window.ARCore = {
         const definition = typeof target === 'string' ? { id: target } : target;
         const container = document.createElement('a-entity');
         const componentSettings = [`showDebugBox: ${this.shouldShowDebugBounds()}`];
+        const characterSettings = window.AppConfig.characters[definition.id];
+
+        if (characterSettings) {
+            Object.entries(characterSettings).forEach(([name, value]) => {
+                componentSettings.push(`${name}: ${value}`);
+            });
+        }
 
         if (options.seed !== undefined) componentSettings.push(`seed: ${options.seed}`);
         if (definition.params) componentSettings.push(definition.params);
@@ -142,38 +158,35 @@ window.ARCore = {
     },
 
     clearScene: function() {
-        [this.mainTarget, this.virtualAnchor].forEach((anchor) => {
+        [this.physicalAnchor, this.virtualAnchor, this.outdoorAnchor].forEach((anchor) => {
             while (anchor && anchor.firstChild) anchor.removeChild(anchor.firstChild);
         });
     },
 
-    isVirtualNFTActive: function() {
-        return window.AppMode.isTest() && window.TestVirtualNFT !== false;
+    getRecognitionState: function() {
+        if (window.AppMode.isOutdoor()) return 'gps';
+        if (window.AppMode.isTest()) return 'virtual';
+        return this.physicalTargetFound ? 'physical' : 'none';
     },
 
-    getCurrentAnchor: function() {
-        if (window.AppMode.isOutdoor()) return this.mainTarget;
-        return this.isVirtualNFTActive() && !this.isTracking
+    isTargetRecognized: function() {
+        return this.getRecognitionState() !== 'none';
+    },
+
+    getActiveAnchor: function() {
+        if (window.AppMode.isOutdoor()) return this.outdoorAnchor;
+        return window.AppMode.isTest()
             ? this.virtualAnchor
-            : this.mainTarget;
+            : this.physicalAnchor;
     },
 
-    moveChildren: function(source, destination) {
+    moveSceneContent: function(source, destination) {
         while (source && destination && source.firstChild) {
             const child = source.firstChild;
             destination.appendChild(child);
-            this.setEntityTreeVisible(child, true);
+            child.setAttribute('visible', 'true');
+            if (child.object3D) child.object3D.visible = true;
         }
-    },
-
-    setEntityTreeVisible: function(entity, visible) {
-        if (!entity) return;
-
-        entity.setAttribute('visible', String(visible));
-        if (entity.object3D) entity.object3D.visible = visible;
-        Array.from(entity.children || []).forEach((child) => {
-            this.setEntityTreeVisible(child, visible);
-        });
     },
 
     setAnchorVisible: function(anchor, visible) {
@@ -182,22 +195,23 @@ window.ARCore = {
         if (anchor.object3D) anchor.object3D.visible = visible;
     },
 
-    updateAnchorState: function() {
-        if (window.AppMode.isOutdoor() || !this.mainTarget || !this.virtualAnchor) return;
+    applyEnvironmentState: function() {
+        if (window.AppMode.isOutdoor() || !this.physicalAnchor || !this.virtualAnchor) return;
 
         const headerText = document.querySelector('#header p');
-        const useVirtualAnchor = this.isVirtualNFTActive() && !this.isTracking;
-        const targetAnchor = useVirtualAnchor ? this.virtualAnchor : this.mainTarget;
-        const sourceAnchor = useVirtualAnchor ? this.mainTarget : this.virtualAnchor;
+        const useVirtualAnchor = window.AppMode.isTest();
+        const usePhysicalAnchor = !useVirtualAnchor && this.physicalTargetFound;
+        const targetAnchor = useVirtualAnchor ? this.virtualAnchor : this.physicalAnchor;
+        const sourceAnchor = useVirtualAnchor ? this.physicalAnchor : this.virtualAnchor;
 
-        // NFT未認識時にゲームだけ見えてしまわないよう、両アンカーを明示的に制御する。
-        this.setAnchorVisible(this.mainTarget, this.isTracking && !useVirtualAnchor);
+        // テストは常に仮想認識、実装は実NFTを認識したときだけ表示する。
+        this.setAnchorVisible(this.physicalAnchor, usePhysicalAnchor);
         this.setAnchorVisible(this.virtualAnchor, useVirtualAnchor);
-        this.moveChildren(sourceAnchor, targetAnchor);
+        this.moveSceneContent(sourceAnchor, targetAnchor);
 
         if (useVirtualAnchor) {
             headerText.innerText = 'ジオラマ表示中 (仮想認識)';
-        } else if (this.isTracking) {
+        } else if (usePhysicalAnchor) {
             headerText.innerText = 'ジオラマが起動しました！';
         } else {
             headerText.innerText = 'ターゲットを映してね！';
@@ -205,7 +219,7 @@ window.ARCore = {
     },
 
     startViewMode: function() {
-        if (!this.mainTarget) return;
+        if (!this.getActiveAnchor()) return;
 
         this.clearScene();
         window.AppConfig.core.viewModeTargets.forEach((target) => {
@@ -216,10 +230,10 @@ window.ARCore = {
             for (let index = 0; index < spawnCount; index++) {
                 const seed = spawnCount > 1 ? index * 50 : undefined;
                 const { container } = this.createTargetEntity(target, { seed });
-                this.getCurrentAnchor().appendChild(container);
+                this.getActiveAnchor().appendChild(container);
             }
         });
-        this.updateAnchorState();
+        this.applyEnvironmentState();
     }
 };
 

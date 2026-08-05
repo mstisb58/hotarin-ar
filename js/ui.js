@@ -249,6 +249,32 @@ window.UIManager = {
         link.click();
     },
 
+    toggleSettingsModal: function() {
+        const modal = document.getElementById('settings-modal');
+        modal.classList.toggle('hidden');
+        if (!modal.classList.contains('hidden')) this.renderTestSettings();
+    },
+
+    renderTestSettings: function() {
+        document.getElementById('test-mode-checkbox').checked = window.AppMode.isTest();
+        document.getElementById('test-show-bounds-checkbox').checked = window.TestShowBounds;
+        document.getElementById('test-suboptions').classList.toggle(
+            'hidden',
+            !window.AppMode.isTest()
+        );
+    },
+
+    setTestMode: function(checked) {
+        localStorage.setItem('testMode', String(checked));
+        this.handleTestModeChange(checked);
+        this.renderTestSettings();
+    },
+
+    setTestShowBounds: function(checked) {
+        localStorage.setItem('testShowBounds', String(checked));
+        this.handleTestShowBoundsChange(checked);
+    },
+
     handleTestModeChange: function(checked) {
         window.TestMode = checked;
         this.applyDebugBoxState();
@@ -266,23 +292,18 @@ window.UIManager = {
         this.applyDebugBoxState();
     },
 
-    handleTestVirtualNFTChange: function(checked) {
-        window.TestVirtualNFT = checked;
-        this.refreshExperienceForTestSettings();
-    },
-
     refreshExperienceForTestSettings: function() {
         if (!window.ARCore || window.AppMode.isOutdoor()) return;
 
         // テストは表示条件、ゲームは体験の種類。現在の体験を正しいアンカー上に再生成する。
         if (this.screenMode === 'result') {
-            window.ARCore.updateAnchorState();
+            window.ARCore.applyEnvironmentState();
         } else if (this.experienceMode === 'game' && window.GameModule) {
             window.GameModule.startGameMode();
         } else if (this.experienceMode === 'view') {
             window.ARCore.startViewMode();
         } else {
-            window.ARCore.updateAnchorState();
+            window.ARCore.applyEnvironmentState();
         }
     },
 
@@ -312,18 +333,31 @@ window.UIManager = {
 
         hudEl.classList.remove('hidden');
         const modeStr = window.AppMode.isOutdoor() ? 'GPS Outdoor Mode' : 'Diorama AR Mode';
-        const nftStatus = window.AppMode.isOutdoor()
-            ? 'GPS Coordinate Base' 
-            : ((window.ARCore && window.ARCore.isTracking) ? 'Physical Target Recognized' : ((window.TestVirtualNFT !== false) ? 'Virtual Target Center' : 'Searching Target'));
-
-        const hotarinScale = window.AppMode.isOutdoor() ? '0.30' : '0.15';
+        const recognitionState = window.ARCore ? window.ARCore.getRecognitionState() : 'none';
+        const recognitionLabels = {
+            gps: 'GPS Coordinate Base',
+            virtual: 'Virtual NFT Recognized',
+            physical: 'Physical NFT Recognized',
+            none: 'Searching NFT'
+        };
+        const characterId = this.experienceMode === 'game'
+            ? window.AppConfig.game.catchTarget
+            : window.AppConfig.core.viewModeTargets[0].id;
+        const character = window.AppConfig.characters[characterId];
+        const targetWidth = window.AppConfig.diorama.targetWidthMeters;
+        const rangeWidth = (character.dioramaWidth * targetWidth).toFixed(2);
+        const rangeDepth = (character.dioramaDepth * targetWidth).toFixed(2);
+        const minHeight = (character.minHeight * targetWidth).toFixed(3);
+        const maxHeight = (character.maxHeight * targetWidth).toFixed(3);
 
         hudEl.innerHTML = `
             <h4>📐 Debug & Size Info</h4>
             <div><b>Mode:</b> ${modeStr}</div>
-            <div><b>Target State:</b> ${nftStatus}</div>
-            <div style="margin-top:4px;"><b>Hotarin Range:</b> 1.0m × 1.0m × 0.45m</div>
-            <div><b>Hotarin Scale:</b> ${hotarinScale}</div>
+            <div><b>Target State:</b> ${recognitionLabels[recognitionState]}</div>
+            <div><b>NFT Width:</b> ${targetWidth.toFixed(2)}m</div>
+            <div style="margin-top:4px;"><b>Flight Range:</b> ${rangeWidth}m × ${rangeDepth}m</div>
+            <div><b>Height:</b> ${minHeight}m – ${maxHeight}m</div>
+            <div><b>Model Scale:</b> ${character.modelScale} × NFT basis</div>
         `;
     },
 
@@ -361,4 +395,7 @@ window.startGameMode = () => { window.UIManager.startGameModeUI(); };
 window.shareTo = () => { window.UIManager.shareTo(); };
 window.takePhoto = () => { window.UIManager.takePhoto(); };
 window.toggleCredits = () => { document.querySelector('#credits-info').classList.toggle('hidden'); };
+window.toggleSettingsModal = () => { window.UIManager.toggleSettingsModal(); };
+window.onTestModeChange = (checked) => { window.UIManager.setTestMode(checked); };
+window.onTestShowBoundsChange = (checked) => { window.UIManager.setTestShowBounds(checked); };
 

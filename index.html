@@ -15,6 +15,7 @@
 
     <!-- プロジェクトのモジュール群を読み込み -->
     <script src="js/config.js"></script>
+    <script src="js/mode-state.js"></script>
     <script src="js/ar-core.js"></script>
     <script src="js/game.js"></script>
     <script src="js/ui.js"></script>
@@ -63,13 +64,7 @@
                         📐 配置やサイズを表示
                     </label>
                 </div>
-                <div class="settings-item sub-item">
-                    <label>
-                        <input type="checkbox" id="test-virtual-nft-checkbox"
-                            onchange="onTestVirtualNFTChange(this.checked)">
-                        🎯 NFTを仮想認識する
-                    </label>
-                </div>
+                <p class="settings-note">🎯 テストモードではNFTを仮想認識します</p>
             </div>
 
             <button class="settings-close-btn" onclick="toggleSettingsModal()">閉じる</button>
@@ -117,207 +112,7 @@
         <video id="shared-webcam" autoplay playsinline muted></video>
     </div>
 
-    <script>
-        // カメラの共通化処理 (getUserMediaのフック)
-        (function () {
-            let activeStream = null;
-
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-
-                navigator.mediaDevices.getUserMedia = async function (constraints) {
-                    console.log("Mocked getUserMedia: Requested with constraints:", JSON.stringify(constraints));
-
-                    // すでにアクティブなストリームがあれば、そのクローンを返す
-                    if (activeStream && activeStream.getVideoTracks()[0].readyState === 'live') {
-                        console.log("Mocked getUserMedia: Returning cloned active stream.");
-                        return activeStream.clone();
-                    }
-
-                    // 統一された高画質背面カメラの constraints
-                    const unifiedConstraints = {
-                        audio: false,
-                        video: {
-                            facingMode: { ideal: "environment" },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        }
-                    };
-
-                    try {
-                        console.log("Mocked getUserMedia: Initializing unified camera stream...");
-                        const stream = await originalGetUserMedia(unifiedConstraints);
-                        activeStream = stream;
-                        return stream.clone();
-                    } catch (err) {
-                        console.warn("Mocked getUserMedia failed with unified constraints, falling back to original request:", err);
-                        const stream = await originalGetUserMedia(constraints);
-                        return stream;
-                    }
-                };
-            }
-        })();
-
-        window.TestMode = localStorage.getItem('testMode') === 'true';
-        window.TestVirtualNFT = localStorage.getItem('testVirtualNFT') !== 'false';
-        window.TestShowBounds = localStorage.getItem('testShowBounds') !== 'false';
-
-        // 共通シーン生成ヘルパー関数
-        function createARScene(mode) {
-            const scene = document.createElement('a-scene');
-            scene.setAttribute('embedded', '');
-            scene.setAttribute('vr-mode-ui', 'enabled: false');
-
-            // 共通のレンダラー設定（高解像度＆アンチエイリアス有効）
-            scene.setAttribute('renderer', 'antialias: true; devicePixelRatio: 2; alpha: true; preserveDrawingBuffer: true; colorManagement: true;');
-
-            // 共通アセット
-            scene.innerHTML = `<a-assets id="asset-manager"></a-assets>`;
-
-            // カメラの追加
-            const camera = document.createElement('a-camera');
-            if (mode === 'gps') {
-                camera.setAttribute('gps-camera', 'gpsMinDistance: 5;');
-                camera.setAttribute('rotation-reader', '');
-            } else {
-                camera.setAttribute('position', '0 0 0');
-                camera.setAttribute('look-controls', 'enabled: false');
-            }
-            scene.appendChild(camera);
-
-            // 各ARライブラリ固有の設定を適用
-            if (mode === 'gps') {
-                // AR.jsの画質を改善するために sourceWidth, sourceHeight 等を設定。videoTexture: false に変更し背景テクスチャ描画を無効化。
-                scene.setAttribute('arjs', 'sourceType: webcam; videoTexture: false; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 720; destWidth: 1280; destHeight: 720;');
-            } else {
-                scene.setAttribute('cursor', 'rayOrigin: mouse');
-                scene.setAttribute('raycaster', 'objects: .clickable');
-                scene.setAttribute('mindar-image', `imageTargetSrc: ${window.AppConfig.core.masterMind}; uiScanning: no;`);
-            }
-
-            return scene;
-        }
-
-        (async () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const mode = urlParams.get('mode') || 'diorama';
-            window.AR_MODE = mode;
-
-            // ボタンの表示テキスト・スタイルの切り替え
-            const switchBtn = document.getElementById('gps-switch-btn');
-            if (mode === 'gps') {
-                switchBtn.innerText = "ジオラマモード";
-                switchBtn.classList.add('gps-mode-active');
-            } else {
-                switchBtn.innerText = "外で見てみる！ (GPS)";
-                switchBtn.classList.remove('gps-mode-active');
-            }
-
-            const sceneContainer = document.getElementById('scene-container');
-
-            if (mode === 'gps') {
-                document.querySelector('#header p').innerText = "GPSを取得中...";
-
-                // AR.jsのダイナミックロード
-                await new Promise((resolve, reject) => {
-                    const s = document.createElement('script');
-                    s.src = "https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js";
-                    s.onload = resolve;
-                    s.onerror = reject;
-                    document.head.appendChild(s);
-                });
-            } else {
-                // MindARのダイナミックロード
-                await new Promise((resolve, reject) => {
-                    const s = document.createElement('script');
-                    s.src = "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js";
-                    s.onload = resolve;
-                    s.onerror = reject;
-                    document.head.appendChild(s);
-                });
-            }
-
-            // 自前で共通カメラを起動して背景に表示
-            const sharedVideo = document.getElementById('shared-webcam');
-            if (sharedVideo) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: "environment" }
-                    });
-                    sharedVideo.srcObject = stream;
-                    await sharedVideo.play();
-                } catch (e) {
-                    console.error("Failed to start shared webcam:", e);
-                }
-            }
-
-            // 共通シーン生成関数を用いてシーンを作成・追加
-            const scene = createARScene(mode);
-            sceneContainer.appendChild(scene);
-
-            // 初期化完了イベントを発火
-            window.dispatchEvent(new CustomEvent('ARSceneReady'));
-        })();
-
-        function switchARMode() {
-            const nextMode = window.AR_MODE === 'gps' ? 'diorama' : 'gps';
-            window.location.search = `?mode=${nextMode}`;
-        }
-
-        function toggleSettingsModal() {
-            const modal = document.getElementById('settings-modal');
-            modal.classList.toggle('hidden');
-            if (!modal.classList.contains('hidden')) {
-                document.getElementById('test-mode-checkbox').checked = window.TestMode;
-                const subopts = document.getElementById('test-suboptions');
-                if (window.TestMode) {
-                    subopts.classList.remove('hidden');
-                    document.getElementById('test-show-bounds-checkbox').checked = (window.TestShowBounds !== false);
-                    document.getElementById('test-virtual-nft-checkbox').checked = (window.TestVirtualNFT !== false);
-                } else {
-                    subopts.classList.add('hidden');
-                }
-            }
-        }
-        window.toggleSettingsModal = toggleSettingsModal;
-
-        function onTestModeChange(checked) {
-            window.TestMode = checked;
-            localStorage.setItem('testMode', checked ? 'true' : 'false');
-            const subopts = document.getElementById('test-suboptions');
-            if (checked) {
-                subopts.classList.remove('hidden');
-                if (window.TestShowBounds === undefined) window.TestShowBounds = true;
-                if (window.TestVirtualNFT === undefined) window.TestVirtualNFT = true;
-                document.getElementById('test-show-bounds-checkbox').checked = window.TestShowBounds;
-                document.getElementById('test-virtual-nft-checkbox').checked = window.TestVirtualNFT;
-            } else {
-                subopts.classList.add('hidden');
-            }
-            if (window.UIManager && typeof window.UIManager.handleTestModeChange === 'function') {
-                window.UIManager.handleTestModeChange(checked);
-            }
-        }
-        window.onTestModeChange = onTestModeChange;
-
-        function onTestShowBoundsChange(checked) {
-            window.TestShowBounds = checked;
-            localStorage.setItem('testShowBounds', checked ? 'true' : 'false');
-            if (window.UIManager && typeof window.UIManager.handleTestShowBoundsChange === 'function') {
-                window.UIManager.handleTestShowBoundsChange(checked);
-            }
-        }
-        window.onTestShowBoundsChange = onTestShowBoundsChange;
-
-        function onTestVirtualNFTChange(checked) {
-            window.TestVirtualNFT = checked;
-            localStorage.setItem('testVirtualNFT', checked ? 'true' : 'false');
-            if (window.UIManager && typeof window.UIManager.handleTestVirtualNFTChange === 'function') {
-                window.UIManager.handleTestVirtualNFTChange(checked);
-            }
-        }
-        window.onTestVirtualNFTChange = onTestVirtualNFTChange;
-    </script>
+    <script src="js/bootstrap.js"></script>
 </body>
 
 </html>
