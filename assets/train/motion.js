@@ -35,7 +35,7 @@ AFRAME.registerComponent('train-logic', {
             // station.glb が完成したら、以下の geometry と material を削除（またはコメントアウト）し、
             // 次の1行を有効にしてください。※ index.html の編集は不要です。
             // this.stationEl.setAttribute('gltf-model', 'assets/train/station.glb');
-            this.stationEl.setAttribute('geometry', { primitive: 'box', width: 0.6, height: 0.6, depth: 0.8 }); // 複線をカバーするためdepthを拡大
+            this.stationEl.setAttribute('geometry', { primitive: 'box', width: 0.15, height: 0.12, depth: 0.25 }); // 実装サイズに合わせて調整
             this.stationEl.setAttribute('material', { color: '#888888', opacity: 1.0 });
             this.el.parentNode.appendChild(this.stationEl);
 
@@ -45,13 +45,13 @@ AFRAME.registerComponent('train-logic', {
             // tunnel.glb が完成したら、以下の geometry と material を削除（またはコメントアウト）し、
             // 次の1行を有効にしてください。※ index.html の編集は不要です。
             // this.tunnelEl.setAttribute('gltf-model', 'assets/train/tunnel.glb');
-            this.tunnelEl.setAttribute('geometry', { primitive: 'cylinder', radius: 0.35, height: 0.8 }); // 複線をカバーするためheight(奥行き方向)を拡大
+            this.tunnelEl.setAttribute('geometry', { primitive: 'cylinder', radius: 0.1, height: 0.25 }); // 実装サイズに合わせて調整
             this.tunnelEl.setAttribute('material', { color: '#444444', opacity: 1.0 });
             this.el.parentNode.appendChild(this.tunnelEl);
         }
 
-        // ★ 重要：自身のエンティティにスケールを適用 (GPSモードの時は0.8(2倍)、ジオラマ時は0.4)
-        const s = (window.AR_MODE === 'gps') ? 0.8 : this.data.modelScale;
+        // ★ 重要：自身のエンティティにスケールを適用 (GPSモードの時は0.25、ジオラマ時は0.4)
+        const s = (window.AR_MODE === 'gps') ? 0.25 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
     },
 

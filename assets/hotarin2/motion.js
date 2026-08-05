@@ -12,8 +12,8 @@ AFRAME.registerComponent('hotarin2-logic', {
     },
 
     init: function () {
-        // スケール適用 (GPSモードの時は0.4(4倍)、ジオラマ時は0.1)
-        const s = (window.AR_MODE === 'gps') ? 0.4 : this.data.modelScale;
+        // スケール適用 (GPSモードの時は0.2(実物大ちびほたりん/ゲーム用)、ジオラマ時は0.1)
+        const s = (window.AR_MODE === 'gps') ? 0.2 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
         
         // 高度の上限 (GPSモード時は0.3、ジオラマ時は0.5)

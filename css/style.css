@@ -210,3 +210,79 @@ body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
 .settings-close-btn:active {
     transform: scale(0.98);
 }
+
+/* テストモード サブオプション */
+.test-suboptions {
+    margin-top: 15px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: #f0f4f8;
+    border-radius: 10px;
+    border: 1px solid #d0dbe5;
+    text-align: left;
+}
+
+.suboptions-title {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: #0076ff;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.settings-item.sub-item {
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+    justify-content: flex-start;
+}
+
+.settings-item.sub-item:last-child {
+    margin-bottom: 0;
+}
+
+/* デバッグ・サイズ表示HUD */
+#debug-hud {
+    position: fixed;
+    top: 90px;
+    left: 15px;
+    z-index: 1005;
+    background: rgba(0, 0, 0, 0.75);
+    color: #00ffcc;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: monospace, sans-serif;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    border: 1px solid #00ffcc;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    pointer-events: none;
+    max-width: 280px;
+}
+
+#debug-hud h4 {
+    margin: 0 0 5px 0;
+    color: #ffffff;
+    font-size: 0.8rem;
+    border-bottom: 1px solid #00ffcc;
+    padding-bottom: 3px;
+}
+
+/* バージョン表示 */
+.version-tag {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #ccc;
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.version-tag a {
+    color: #0076ff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.version-tag a:hover {
+    text-decoration: underline;
+}
+

@@ -7,6 +7,17 @@ window.UIManager = {
     
     init: function() {
         this.bindEvents();
+        
+        // テストモードの初期設定復元
+        window.TestShowBounds = localStorage.getItem('testShowBounds') !== 'false';
+        window.TestVirtualNFT = localStorage.getItem('testVirtualNFT') !== 'false';
+        
+        // GitHubコミット情報の取得
+        this.fetchGitHubVersion();
+
+        // デバッグHUDの更新タイマー開始
+        setInterval(() => this.updateDebugHUD(), 500);
+
         // 初期状態は鑑賞モード
         this.startViewModeUI();
     },
@@ -65,12 +76,8 @@ window.UIManager = {
         document.getElementById('capture-btn').classList.remove('hidden'); 
         
         const toggleBtn = document.getElementById('mode-toggle-btn');
-        if (window.AR_MODE === 'gps') {
-            toggleBtn.classList.add('hidden');
-        } else {
-            toggleBtn.classList.remove('hidden');
-            toggleBtn.innerText = "ゲームモードにする";
-        }
+        toggleBtn.classList.remove('hidden');
+        toggleBtn.innerText = "ゲームモードにする";
     },
     
     startGameModeUI: function() {
@@ -244,24 +251,95 @@ window.UIManager = {
     },
 
     handleTestModeChange: function(checked) {
+        window.TestMode = checked;
+        this.applyDebugBoxState();
+        
         if (window.AR_MODE === 'gps') {
             alert("GPSの基準点を再設定するため、ページをリロードします。");
             window.location.reload();
         } else {
-            const scene = document.querySelector('a-scene');
-            if (scene) {
-                const components = ['hotarin-logic', 'hotarin2-logic', 'train-logic', 'sounyan-logic', 'ybp-logic'];
-                components.forEach(comp => {
-                    const entities = scene.querySelectorAll(`[${comp}]`);
-                    entities.forEach(el => {
-                        el.setAttribute(comp, 'showDebugBox', checked);
-                    });
-                });
-            }
-            // 仮想アンカーの親付け替え同期処理を追加
             if (window.ARCore && typeof window.ARCore.updateAnchorParenting === 'function') {
                 window.ARCore.updateAnchorParenting();
             }
+        }
+    },
+
+    handleTestShowBoundsChange: function(checked) {
+        window.TestShowBounds = checked;
+        this.applyDebugBoxState();
+    },
+
+    handleTestVirtualNFTChange: function(checked) {
+        window.TestVirtualNFT = checked;
+        if (window.ARCore && typeof window.ARCore.updateAnchorParenting === 'function') {
+            window.ARCore.updateAnchorParenting();
+        }
+    },
+
+    applyDebugBoxState: function() {
+        const show = window.TestMode && (window.TestShowBounds !== false);
+        const scene = document.querySelector('a-scene');
+        if (scene) {
+            const components = ['hotarin-logic', 'hotarin2-logic', 'train-logic', 'sounyan-logic', 'ybp-logic'];
+            components.forEach(comp => {
+                const entities = scene.querySelectorAll(`[${comp}]`);
+                entities.forEach(el => {
+                    el.setAttribute(comp, 'showDebugBox', show);
+                });
+            });
+        }
+    },
+
+    updateDebugHUD: function() {
+        const hudEl = document.getElementById('debug-hud');
+        if (!hudEl) return;
+
+        const showHUD = window.TestMode && (window.TestShowBounds !== false);
+        if (!showHUD) {
+            hudEl.classList.add('hidden');
+            return;
+        }
+
+        hudEl.classList.remove('hidden');
+        const modeStr = (window.AR_MODE === 'gps') ? 'GPS Outdoor Mode' : 'Diorama AR Mode';
+        const nftStatus = (window.AR_MODE === 'gps') 
+            ? 'GPS Coordinate Base' 
+            : ((window.ARCore && window.ARCore.isTracking) ? 'Physical Target Recognized' : ((window.TestVirtualNFT !== false) ? 'Virtual Target Center' : 'Searching Target'));
+
+        const hotarinScale = (window.AR_MODE === 'gps') ? '0.30' : '0.15';
+        const trainScale = (window.AR_MODE === 'gps') ? '0.25' : '0.40';
+
+        hudEl.innerHTML = `
+            <h4>📐 Debug & Size Info</h4>
+            <div><b>Mode:</b> ${modeStr}</div>
+            <div><b>Target State:</b> ${nftStatus}</div>
+            <div style="margin-top:4px;"><b>Hotarin Range:</b> 1.0m × 1.0m × 0.45m</div>
+            <div><b>Hotarin Scale:</b> ${hotarinScale}</div>
+            <div><b>Train Line Length:</b> 3.0m</div>
+            <div><b>Train Scale:</b> ${trainScale}</div>
+        `;
+    },
+
+    fetchGitHubVersion: async function() {
+        try {
+            const res = await fetch('https://api.github.com/repos/mstisb58/hotarin-ar/commits/main', { cache: 'no-cache' });
+            if (!res.ok) throw new Error('API fetch error');
+            const data = await res.json();
+            const commitSha = data.sha ? data.sha.substring(0, 7) : '6781b10';
+            
+            const gitCommitEl = document.getElementById('git-commit');
+            const gitCommitLink = document.getElementById('git-commit-link');
+            const gitVerEl = document.getElementById('git-version');
+
+            if (gitCommitEl) gitCommitEl.innerText = commitSha;
+            if (gitCommitLink) gitCommitLink.href = `https://github.com/mstisb58/hotarin-ar/commit/${data.sha}`;
+            if (gitVerEl) gitVerEl.innerText = window.AppConfig ? window.AppConfig.version : 'v4.12.2';
+        } catch (e) {
+            console.warn('Could not fetch latest commit from GitHub API, using fallback:', e);
+            const gitCommitEl = document.getElementById('git-commit');
+            const gitVerEl = document.getElementById('git-version');
+            if (gitCommitEl && window.AppConfig) gitCommitEl.innerText = window.AppConfig.commitHash;
+            if (gitVerEl && window.AppConfig) gitVerEl.innerText = window.AppConfig.version;
         }
     }
 };
@@ -273,3 +351,4 @@ window.startGameMode = () => { window.UIManager.startGameModeUI(); };
 window.shareTo = () => { window.UIManager.shareTo(); };
 window.takePhoto = () => { window.UIManager.takePhoto(); };
 window.toggleCredits = () => { document.querySelector('#credits-info').classList.toggle('hidden'); };
+

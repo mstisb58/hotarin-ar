@@ -1,4 +1,15 @@
 window.AppConfig = {
+    // アプリケーションバージョン設定（GitHub Pages表示用）
+    version: "v4.12.2",
+    commitHash: "6781b10",
+    repoUrl: "https://github.com/mstisb58/hotarin-ar",
+
+    // テストモード設定の初期値
+    testModeDefaults: {
+        showBounds: true,
+        virtualNFT: true
+    },
+
     // ARコア設定（Ver2相当の基本システム用）
     core: {
         // システム全体で読み込むキャラ名（フォルダ名）のリスト
@@ -39,3 +50,4 @@ window.AppConfig = {
         ]
     }
 };
+

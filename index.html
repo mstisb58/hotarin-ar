@@ -29,6 +29,11 @@
     <div id="credits-info" class="hidden">
         <h3>Licenses & Credits</h3>
         <p>AR: Mind-AR (MIT) / Models: Meshy (CC BY 4.0)</p>
+        <div id="version-info" class="version-tag">
+            <span class="ver-label">GitHub Version:</span> 
+            <span id="git-version">v4.12.2</span> 
+            (<a id="git-commit-link" href="https://github.com/mstisb58/hotarin-ar/commit/6781b10" target="_blank"><span id="git-commit">6781b10</span></a>)
+        </div>
     </div>
 
     <!-- 設定モーダル -->
@@ -41,9 +46,31 @@
                     テストモードを有効にする
                 </label>
             </div>
+
+            <!-- テストモード サブボタン／オプション -->
+            <div id="test-suboptions" class="test-suboptions hidden">
+                <div class="suboptions-title">▼ テスト機能サブオプション</div>
+                <div class="settings-item sub-item">
+                    <label>
+                        <input type="checkbox" id="test-show-bounds-checkbox" onchange="onTestShowBoundsChange(this.checked)">
+                        📐 配置やサイズを表示
+                    </label>
+                </div>
+                <div class="settings-item sub-item">
+                    <label>
+                        <input type="checkbox" id="test-virtual-nft-checkbox" onchange="onTestVirtualNFTChange(this.checked)">
+                        🎯 NFTを仮想認識する
+                    </label>
+                </div>
+            </div>
+
             <button class="settings-close-btn" onclick="toggleSettingsModal()">閉じる</button>
         </div>
     </div>
+
+    <!-- リアルタイム デバッグ・サイズ表示HUD -->
+    <div id="debug-hud" class="hidden"></div>
+
 
     <!-- GPS・ジオラマ切り替えUI -->
     <div id="gps-switch-btn" onclick="switchARMode()">外で見てみる！ (GPS)</div>
@@ -232,6 +259,14 @@
             modal.classList.toggle('hidden');
             if (!modal.classList.contains('hidden')) {
                 document.getElementById('test-mode-checkbox').checked = window.TestMode;
+                const subopts = document.getElementById('test-suboptions');
+                if (window.TestMode) {
+                    subopts.classList.remove('hidden');
+                    document.getElementById('test-show-bounds-checkbox').checked = (window.TestShowBounds !== false);
+                    document.getElementById('test-virtual-nft-checkbox').checked = (window.TestVirtualNFT !== false);
+                } else {
+                    subopts.classList.add('hidden');
+                }
             }
         }
         window.toggleSettingsModal = toggleSettingsModal;
@@ -239,11 +274,39 @@
         function onTestModeChange(checked) {
             window.TestMode = checked;
             localStorage.setItem('testMode', checked ? 'true' : 'false');
+            const subopts = document.getElementById('test-suboptions');
+            if (checked) {
+                subopts.classList.remove('hidden');
+                if (window.TestShowBounds === undefined) window.TestShowBounds = true;
+                if (window.TestVirtualNFT === undefined) window.TestVirtualNFT = true;
+                document.getElementById('test-show-bounds-checkbox').checked = window.TestShowBounds;
+                document.getElementById('test-virtual-nft-checkbox').checked = window.TestVirtualNFT;
+            } else {
+                subopts.classList.add('hidden');
+            }
             if (window.UIManager && typeof window.UIManager.handleTestModeChange === 'function') {
                 window.UIManager.handleTestModeChange(checked);
             }
         }
         window.onTestModeChange = onTestModeChange;
+
+        function onTestShowBoundsChange(checked) {
+            window.TestShowBounds = checked;
+            localStorage.setItem('testShowBounds', checked ? 'true' : 'false');
+            if (window.UIManager && typeof window.UIManager.handleTestShowBoundsChange === 'function') {
+                window.UIManager.handleTestShowBoundsChange(checked);
+            }
+        }
+        window.onTestShowBoundsChange = onTestShowBoundsChange;
+
+        function onTestVirtualNFTChange(checked) {
+            window.TestVirtualNFT = checked;
+            localStorage.setItem('testVirtualNFT', checked ? 'true' : 'false');
+            if (window.UIManager && typeof window.UIManager.handleTestVirtualNFTChange === 'function') {
+                window.UIManager.handleTestVirtualNFTChange(checked);
+            }
+        }
+        window.onTestVirtualNFTChange = onTestVirtualNFTChange;
     </script>
 </body>
 </html>

@@ -157,7 +157,8 @@ window.ARCore = {
         if (window.AR_MODE === 'gps') {
             return this.mainTarget;
         }
-        if (window.TestMode && !this.isTracking) {
+        const allowVirtualNFT = window.TestMode && (window.TestVirtualNFT !== false);
+        if (allowVirtualNFT && !this.isTracking) {
             // 仮想アンカーの遅延生成とアタッチ
             if (!this.virtualAnchor) {
                 this.virtualAnchor = document.createElement('a-entity');
