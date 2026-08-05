@@ -49,41 +49,34 @@ window.ARCore = {
                     this.initGPSScene(centerLat, centerLon);
                 },
                 (error) => {
-                    console.warn("GPS取得失敗。YBP水のホール位置を使用します。", error);
-                    headerText.innerText = "GPSモード (YBP水のホール表示)";
-                    this.initGPSScene(35.454332476881056, 139.59818021935607);
-                },
-                { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
-            );
-        } else {
+                    console.warn("GPS取得失敗。YBP水�        } else {
             headerText.innerText = "ターゲットを映してね！";
 
             this.mainTarget = document.createElement('a-entity');
             this.mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
             scene.appendChild(this.mainTarget);
 
-            // テストモード用の仮想アンカーをカメラの下に作成
-            const camera = document.querySelector('a-camera');
+            // テストモード（仮想認識）用のアンカーをカメラ前方1.2mに作成
+            const camera = document.querySelector('a-camera') || scene;
             this.virtualAnchor = document.createElement('a-entity');
             this.virtualAnchor.setAttribute('id', 'virtual-anchor');
-            this.virtualAnchor.setAttribute('position', '0 -0.2 -1.2'); // カメラ前方1.2m、少し下に配置
+            this.virtualAnchor.setAttribute('position', '0 -0.1 -1.2'); // カメラ正面1.2m
             this.virtualAnchor.setAttribute('rotation', '0 0 0');
-            if (camera) {
-                camera.appendChild(this.virtualAnchor);
-            }
+            camera.appendChild(this.virtualAnchor);
 
             this.isTracking = false;
 
             this.mainTarget.addEventListener("targetFound", () => { 
-                headerText.innerText = "ジオラマが起動しました！"; 
                 this.isTracking = true;
-                this.updateAnchorParenting();
+                this.updateAnchorState();
             });
             this.mainTarget.addEventListener("targetLost", () => { 
-                headerText.innerText = "ターゲットを映してね！"; 
                 this.isTracking = false;
-                this.updateAnchorParenting();
+                this.updateAnchorState();
             });
+
+            // 初期アンカー状態の適用
+            setTimeout(() => this.updateAnchorState(), 100);
         }
     },
 
@@ -135,24 +128,89 @@ window.ARCore = {
         }
     },
     
+    isVirtualNFTActive: function() {
+        // 設定モード > 仮想認識ON (またはテストモードONで仮想認識チェックあり)
+        return window.TestMode && (window.TestVirtualNFT !== false);
+    },
+
+    getCurrentAnchor: function() {
+        if (window.AR_MODE === 'gps') {
+            return this.mainTarget;
+        }
+        // IF : 設定モード > 仮想認識ON かつ 実NFT未検知 -> 仮想アンカーを使用
+        if (this.isVirtualNFTActive() && !this.isTracking) {
+            return this.virtualAnchor;
+        }
+        return this.mainTarget;
+    },
+
+    updateAnchorState: function() {
+        if (window.AR_MODE === 'gps') return;
+        
+        const headerText = document.querySelector('#header p');
+
+        if (this.isVirtualNFTActive() && !this.isTracking) {
+            // ★ 仮想認識モード：画面中央に配置
+            if (headerText) headerText.innerText = "ジオラマ表示中 (仮想認識)";
+            if (this.virtualAnchor) {
+                this.virtualAnchor.setAttribute('visible', 'true');
+                if (this.virtualAnchor.object3D) this.virtualAnchor.object3D.visible = true;
+            }
+
+            // mainTargetからvirtualAnchorへ子要素（ほたりん）を移動
+            while (this.mainTarget && this.mainTarget.firstChild) {
+                const child = this.mainTarget.firstChild;
+                child.setAttribute('visible', 'true');
+                if (child.object3D) child.object3D.visible = true;
+                this.virtualAnchor.appendChild(child);
+            }
+
+            // virtualAnchor内の全子要素を表示状態に確実にする
+            if (this.virtualAnchor) {
+                Array.from(this.virtualAnchor.children).forEach(child => {
+                    child.setAttribute('visible', 'true');
+                    if (child.object3D) child.object3D.visible = true;
+                });
+            }
+        } else if (this.isTracking) {
+            // ★ マーカー認識成功：リアルNFTマーカー上に配置
+            if (headerText) headerText.innerText = "ジオラマが起動しました！";
+            
+            while (this.virtualAnchor && this.virtualAnchor.firstChild) {
+                const child = this.virtualAnchor.firstChild;
+                child.setAttribute('visible', 'true');
+                if (child.object3D) child.object3D.visible = true;
+                this.mainTarget.appendChild(child);
+            }
+        } else {
+            // ★ マーカー未認識 かつ 仮想認識OFF：マーカー探知待ち
+            if (headerText) headerText.innerText = "ターゲットを映してね！";
+            if (this.virtualAnchor) {
+                this.virtualAnchor.setAttribute('visible', 'false');
+                if (this.virtualAnchor.object3D) this.virtualAnchor.object3D.visible = false;
+            }
+        }
+    },
+
+    updateAnchorParenting: function() {
+        this.updateAnchorState();
+    },
+
     startViewMode: function() {
         this.clearScene();
         
         // config.js の viewModeTargets リストに基づいて配置
         window.AppConfig.core.viewModeTargets.forEach((target) => {
-            // 電車と駅(train)は非表示にする
             if (target.id === 'train') return;
 
             const spawnCount = target.count || 1;
             
             for (let i = 0; i < spawnCount; i++) {
                 const container = document.createElement('a-entity');
+                container.setAttribute('visible', 'true');
                 
-                // 複数匹出現させる場合は動きが被らないようにseedをずらす
                 const seedSetting = (spawnCount > 1) ? `seed: ${i * 50};` : '';
-                // 個別設定パラメータがあれば追加
                 const extraParams = target.params ? target.params + ';' : '';
-                // ベースの回転（Blenderの書き出し設定に依存するため調整可能に）
                 const baseRot = target.baseRot || "90 0 0";
                 
                 container.innerHTML = `
@@ -163,17 +221,9 @@ window.ARCore = {
                 this.getCurrentAnchor().appendChild(container);
             }
         });
-    },
 
-    getCurrentAnchor: function() {
-        if (window.AR_MODE === 'gps') {
-            return this.mainTarget;
-        }
-        const allowVirtualNFT = window.TestMode && (window.TestVirtualNFT !== false);
-        if (allowVirtualNFT && !this.isTracking) {
-            if (this.virtualAnchor && !this.virtualAnchor.parentNode) {
-                const camera = document.querySelector('a-camera');
-                if (camera) camera.appendChild(this.virtualAnchor);
+        this.updateAnchorState();
+    },ualAnchor);
             }
             return this.virtualAnchor || this.mainTarget;
         }

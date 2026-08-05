@@ -159,6 +159,8 @@
         })();
 
         window.TestMode = localStorage.getItem('testMode') === 'true';
+        window.TestVirtualNFT = localStorage.getItem('testVirtualNFT') !== 'false';
+        window.TestShowBounds = localStorage.getItem('testShowBounds') !== 'false';
 
         // 共通シーン生成ヘルパー関数
         function createARScene(mode) {

@@ -28,11 +28,9 @@ window.AppConfig = {
         maxTargets: 7,      // 同時に出現できる最大数
         spawnInterval: 600, // ポップ頻度（ミリ秒）
         
-        // ★ ゲームモードで出現する獲物と、背景として残すキャラクター
+        // ★ ゲームモードで出現する獲物（ちびほたりんのみ）
         catchTarget: "hotarin2", 
-        backgroundTargets: [
-            { id: "hotarin", count: 1 }
-        ],
+        backgroundTargets: [],
 
         hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部",
         resultMessages: [
