@@ -7,6 +7,8 @@ window.GameModule = {
     timeLeft: 0,
     
     startGameMode: function() {
+        // テスト設定変更などによる再開始でもタイマーを重複させない。
+        this.clearTimers();
         window.ARCore.clearScene();
         
         this.score = 0;
@@ -50,7 +52,8 @@ window.GameModule = {
 
     endGame: function() {
         if (window.UIManager) {
-            window.UIManager.currentMode = 'result';
+            // リザルトは第3の体験ではなく、ゲーム体験内の画面状態。
+            window.UIManager.screenMode = 'result';
             window.UIManager.captureResultImage(this.score);
         }
         

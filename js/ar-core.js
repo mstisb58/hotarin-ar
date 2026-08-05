@@ -6,7 +6,7 @@ window.ARCore = {
 
     init: async function() {
         await this.loadAssets();
-        if (window.AR_MODE === 'gps') {
+        if (window.AppMode.isOutdoor()) {
             this.initGPSMode();
         } else {
             this.initDioramaMode();
@@ -46,7 +46,7 @@ window.ARCore = {
         headerText.innerText = 'GPSを取得中...';
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const useCurrentPosition = window.TestMode;
+                const useCurrentPosition = window.AppMode.isTest();
                 const latitude = useCurrentPosition
                     ? position.coords.latitude
                     : outdoor.center.latitude;
@@ -115,7 +115,7 @@ window.ARCore = {
     },
 
     shouldShowDebugBounds: function() {
-        return window.TestMode && window.TestShowBounds !== false;
+        return window.AppMode.isTest() && window.TestShowBounds !== false;
     },
 
     createTargetEntity: function(target, options = {}) {
@@ -148,11 +148,11 @@ window.ARCore = {
     },
 
     isVirtualNFTActive: function() {
-        return window.TestMode && window.TestVirtualNFT !== false;
+        return window.AppMode.isTest() && window.TestVirtualNFT !== false;
     },
 
     getCurrentAnchor: function() {
-        if (window.AR_MODE === 'gps') return this.mainTarget;
+        if (window.AppMode.isOutdoor()) return this.mainTarget;
         return this.isVirtualNFTActive() && !this.isTracking
             ? this.virtualAnchor
             : this.mainTarget;
@@ -161,22 +161,38 @@ window.ARCore = {
     moveChildren: function(source, destination) {
         while (source && destination && source.firstChild) {
             const child = source.firstChild;
-            child.setAttribute('visible', 'true');
-            if (child.object3D) child.object3D.visible = true;
             destination.appendChild(child);
+            this.setEntityTreeVisible(child, true);
         }
     },
 
+    setEntityTreeVisible: function(entity, visible) {
+        if (!entity) return;
+
+        entity.setAttribute('visible', String(visible));
+        if (entity.object3D) entity.object3D.visible = visible;
+        Array.from(entity.children || []).forEach((child) => {
+            this.setEntityTreeVisible(child, visible);
+        });
+    },
+
+    setAnchorVisible: function(anchor, visible) {
+        if (!anchor) return;
+        anchor.setAttribute('visible', String(visible));
+        if (anchor.object3D) anchor.object3D.visible = visible;
+    },
+
     updateAnchorState: function() {
-        if (window.AR_MODE === 'gps' || !this.mainTarget || !this.virtualAnchor) return;
+        if (window.AppMode.isOutdoor() || !this.mainTarget || !this.virtualAnchor) return;
 
         const headerText = document.querySelector('#header p');
         const useVirtualAnchor = this.isVirtualNFTActive() && !this.isTracking;
         const targetAnchor = useVirtualAnchor ? this.virtualAnchor : this.mainTarget;
         const sourceAnchor = useVirtualAnchor ? this.mainTarget : this.virtualAnchor;
 
-        this.virtualAnchor.setAttribute('visible', String(useVirtualAnchor));
-        if (this.virtualAnchor.object3D) this.virtualAnchor.object3D.visible = useVirtualAnchor;
+        // NFT未認識時にゲームだけ見えてしまわないよう、両アンカーを明示的に制御する。
+        this.setAnchorVisible(this.mainTarget, this.isTracking && !useVirtualAnchor);
+        this.setAnchorVisible(this.virtualAnchor, useVirtualAnchor);
         this.moveChildren(sourceAnchor, targetAnchor);
 
         if (useVirtualAnchor) {
@@ -212,7 +228,7 @@ window.addEventListener('ARSceneReady', async () => {
         await window.ARCore.init();
         if (window.UIManager) {
             window.UIManager.init();
-        } else if (window.AR_MODE !== 'gps') {
+        } else if (!window.AppMode.isOutdoor()) {
             window.ARCore.startViewMode();
         }
     } catch (error) {

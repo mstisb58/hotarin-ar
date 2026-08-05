@@ -1,6 +1,7 @@
 // UIおよび画面操作モジュール
 window.UIManager = {
-    currentMode: 'view',
+    experienceMode: 'view',
+    screenMode: 'live',
     lastTouchTime: 0,
     resultImageBlob: null,
     resultImageUrl: null,
@@ -20,7 +21,7 @@ window.UIManager = {
     
     bindEvents: function() {
         const handleInteraction = (e) => {
-            if(this.currentMode === 'game') {
+            if(this.experienceMode === 'game' && this.screenMode === 'live') {
                 // タッチとクリックの重複処理を防止
                 if (e.type === 'touchstart') {
                     this.lastTouchTime = Date.now();
@@ -52,7 +53,7 @@ window.UIManager = {
     },
     
     toggleMode: function() {
-        if (this.currentMode === 'view' || this.currentMode === 'result') {
+        if (this.experienceMode === 'view') {
             this.startGameModeUI();
         } else {
             this.startViewModeUI();
@@ -60,7 +61,8 @@ window.UIManager = {
     },
     
     startViewModeUI: function() {
-        this.currentMode = 'view';
+        this.experienceMode = 'view';
+        this.screenMode = 'live';
         if(window.GameModule) window.GameModule.clearTimers();
         if (window.ARCore) {
             window.ARCore.startViewMode();
@@ -77,7 +79,8 @@ window.UIManager = {
     },
     
     startGameModeUI: function() {
-        this.currentMode = 'game';
+        this.experienceMode = 'game';
+        this.screenMode = 'live';
         
         document.getElementById('result-screen').classList.add('hidden');
         document.getElementById('capture-btn').classList.add('hidden'); 
@@ -250,13 +253,11 @@ window.UIManager = {
         window.TestMode = checked;
         this.applyDebugBoxState();
         
-        if (window.AR_MODE === 'gps') {
+        if (window.AppMode.isOutdoor()) {
             alert("GPSの基準点を再設定するため、ページをリロードします。");
             window.location.reload();
         } else {
-            if (window.ARCore) {
-                window.ARCore.updateAnchorState();
-            }
+            this.refreshExperienceForTestSettings();
         }
     },
 
@@ -267,13 +268,26 @@ window.UIManager = {
 
     handleTestVirtualNFTChange: function(checked) {
         window.TestVirtualNFT = checked;
-        if (window.ARCore) {
+        this.refreshExperienceForTestSettings();
+    },
+
+    refreshExperienceForTestSettings: function() {
+        if (!window.ARCore || window.AppMode.isOutdoor()) return;
+
+        // テストは表示条件、ゲームは体験の種類。現在の体験を正しいアンカー上に再生成する。
+        if (this.screenMode === 'result') {
+            window.ARCore.updateAnchorState();
+        } else if (this.experienceMode === 'game' && window.GameModule) {
+            window.GameModule.startGameMode();
+        } else if (this.experienceMode === 'view') {
+            window.ARCore.startViewMode();
+        } else {
             window.ARCore.updateAnchorState();
         }
     },
 
     applyDebugBoxState: function() {
-        const show = window.TestMode && (window.TestShowBounds !== false);
+        const show = window.AppMode.isTest() && window.TestShowBounds !== false;
         const scene = document.querySelector('a-scene');
         if (scene) {
             const components = ['hotarin-logic', 'hotarin2-logic'];
@@ -290,19 +304,19 @@ window.UIManager = {
         const hudEl = document.getElementById('debug-hud');
         if (!hudEl) return;
 
-        const showHUD = window.TestMode && (window.TestShowBounds !== false);
+        const showHUD = window.AppMode.isTest() && window.TestShowBounds !== false;
         if (!showHUD) {
             hudEl.classList.add('hidden');
             return;
         }
 
         hudEl.classList.remove('hidden');
-        const modeStr = (window.AR_MODE === 'gps') ? 'GPS Outdoor Mode' : 'Diorama AR Mode';
-        const nftStatus = (window.AR_MODE === 'gps') 
+        const modeStr = window.AppMode.isOutdoor() ? 'GPS Outdoor Mode' : 'Diorama AR Mode';
+        const nftStatus = window.AppMode.isOutdoor()
             ? 'GPS Coordinate Base' 
             : ((window.ARCore && window.ARCore.isTracking) ? 'Physical Target Recognized' : ((window.TestVirtualNFT !== false) ? 'Virtual Target Center' : 'Searching Target'));
 
-        const hotarinScale = (window.AR_MODE === 'gps') ? '0.30' : '0.15';
+        const hotarinScale = window.AppMode.isOutdoor() ? '0.30' : '0.15';
 
         hudEl.innerHTML = `
             <h4>📐 Debug & Size Info</h4>
