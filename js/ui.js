@@ -8,10 +8,6 @@ window.UIManager = {
     init: function() {
         this.bindEvents();
         
-        // テストモードの初期設定復元
-        window.TestShowBounds = localStorage.getItem('testShowBounds') !== 'false';
-        window.TestVirtualNFT = localStorage.getItem('testVirtualNFT') !== 'false';
-        
         // GitHubコミット情報の取得
         this.fetchGitHubVersion();
 
@@ -66,7 +62,7 @@ window.UIManager = {
     startViewModeUI: function() {
         this.currentMode = 'view';
         if(window.GameModule) window.GameModule.clearTimers();
-        if (window.AR_MODE !== 'gps') {
+        if (window.ARCore) {
             window.ARCore.startViewMode();
         }
         
@@ -258,8 +254,8 @@ window.UIManager = {
             alert("GPSの基準点を再設定するため、ページをリロードします。");
             window.location.reload();
         } else {
-            if (window.ARCore && typeof window.ARCore.updateAnchorParenting === 'function') {
-                window.ARCore.updateAnchorParenting();
+            if (window.ARCore) {
+                window.ARCore.updateAnchorState();
             }
         }
     },
@@ -271,8 +267,8 @@ window.UIManager = {
 
     handleTestVirtualNFTChange: function(checked) {
         window.TestVirtualNFT = checked;
-        if (window.ARCore && typeof window.ARCore.updateAnchorParenting === 'function') {
-            window.ARCore.updateAnchorParenting();
+        if (window.ARCore) {
+            window.ARCore.updateAnchorState();
         }
     },
 

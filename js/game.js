@@ -21,20 +21,12 @@ window.GameModule = {
         // 背景キャラ配置（config.jsのリストに基づく）
         const backgrounds = window.AppConfig.game.backgroundTargets;
         backgrounds.forEach((target) => {
-            // 文字列指定かオブジェクト指定か判定
             const id = typeof target === 'string' ? target : target.id;
             // 電車と駅(train)は非表示にする
             if (id === 'train') return;
-            const extraParams = target.params ? target.params + ';' : '';
-            const baseRot = target.baseRot || "90 0 0";
 
-            const bgContainer = document.createElement('a-entity');
-            bgContainer.innerHTML = `
-                <a-entity ${id}-logic="showDebugBox: ${window.TestMode}; ${extraParams}">
-                    <a-gltf-model src="#${id}Model" rotation="${baseRot}" animation-mixer></a-gltf-model>
-                </a-entity>
-            `;
-            window.ARCore.getCurrentAnchor().appendChild(bgContainer);
+            const { container } = window.ARCore.createTargetEntity(target);
+            window.ARCore.getCurrentAnchor().appendChild(container);
         });
 
         // ゲーム用タイマー開始
@@ -81,34 +73,24 @@ window.GameModule = {
     spawnTarget: function() {
         this.hotarinCount++;
         const seed = Math.random() * 1000;
-        const container = document.createElement('a-entity');
-        container.classList.add('clickable');
-        
         const targetId = window.AppConfig.game.catchTarget; // config.jsから獲物を取得
-
-        const logicEntity = document.createElement('a-entity');
-        logicEntity.setAttribute(`${targetId}-logic`, `showDebugBox: ${window.TestMode}; seed: ${seed}`);
-        
-        const model = document.createElement('a-gltf-model');
-        model.setAttribute('src', `#${targetId}Model`);
-        model.setAttribute('rotation', '90 0 0');
-        model.setAttribute('animation-mixer', '');
+        const targetEntity = window.ARCore.createTargetEntity(targetId, { seed });
+        const targetContainer = targetEntity.container;
+        const logicEntity = targetEntity.logicEntity;
+        targetContainer.classList.add('clickable');
         
         // 当たり判定用の球体
         const sphere = document.createElement('a-sphere');
         sphere.setAttribute('radius', '1.0'); 
         sphere.setAttribute('material', 'opacity: 0; transparent: true');
         
-        logicEntity.appendChild(model);
         logicEntity.appendChild(sphere);
-        container.appendChild(logicEntity);
-
-        window.ARCore.getCurrentAnchor().appendChild(container);
+        window.ARCore.getCurrentAnchor().appendChild(targetContainer);
 
         // 10秒で自動消滅
         setTimeout(() => {
-            if (container.parentNode) {
-                container.parentNode.removeChild(container);
+            if (targetContainer.parentNode) {
+                targetContainer.parentNode.removeChild(targetContainer);
                 this.hotarinCount--;
             }
         }, 10000);

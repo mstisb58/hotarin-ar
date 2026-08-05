@@ -1,261 +1,203 @@
-// ピュアなAR基本システム (Ver2相当)
+// ARシーンの初期化・配置・アンカー切り替えを管理する。
 window.ARCore = {
     mainTarget: null,
-    
+    virtualAnchor: null,
+    isTracking: false,
+
     init: function() {
-        const scene = document.querySelector('a-scene');
+        this.loadAssets();
+        if (window.AR_MODE === 'gps') {
+            this.initGPSMode();
+        } else {
+            this.initDioramaMode();
+        }
+    },
+
+    loadAssets: function() {
         const assetManager = document.querySelector('#asset-manager');
-        const headerText = document.querySelector('#header p');
-        
-        // アセット事前読み込みとロジックスクリプトの動的読み込み
         window.AppConfig.core.arsystem.forEach((id) => {
-            // スクリプトの読み込み
             const script = document.createElement('script');
             script.src = `assets/${id}/motion.js`;
             document.head.appendChild(script);
 
-            // モデルの読み込み
             const assetItem = document.createElement('a-asset-item');
             assetItem.setAttribute('id', `${id}Model`);
             assetItem.setAttribute('src', `assets/${id}/model.glb`);
             assetManager.appendChild(assetItem);
         });
-
-        if (window.AR_MODE === 'gps') {
-            headerText.innerText = "GPSを取得中...";
-            
-            // GPS Location Retrieval
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    
-                    const waterHallLat = 35.454332476881056;
-                    const waterHallLon = 139.59818021935607;
-                    
-                    let centerLat = waterHallLat;
-                    let centerLon = waterHallLon;
-                    
-                    if (window.TestMode) {
-                        console.log("テストモードON: 現在地をYBPの中心（原点）とみなして配置します。");
-                        headerText.innerText = "GPSモード (テスト表示中)";
-                        centerLat = lat;
-                        centerLon = lon;
-                    } else {
-                        console.log("テストモードOFF: リアルGPSで動作（現地でのみ見えます）。");
-                        headerText.innerText = "GPSモード: YBP水のホールに出現中！";
-                    }
-                    
-                    this.initGPSScene(centerLat, centerLon);
-                },
-                (error) => {
-                    console.warn("GPS取得失敗。YBP水�        } else {
-            headerText.innerText = "ターゲットを映してね！";
-
-            this.mainTarget = document.createElement('a-entity');
-            this.mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
-            scene.appendChild(this.mainTarget);
-
-            // テストモード（仮想認識）用のアンカーをカメラ前方1.2mに作成
-            const camera = document.querySelector('a-camera') || scene;
-            this.virtualAnchor = document.createElement('a-entity');
-            this.virtualAnchor.setAttribute('id', 'virtual-anchor');
-            this.virtualAnchor.setAttribute('position', '0 -0.1 -1.2'); // カメラ正面1.2m
-            this.virtualAnchor.setAttribute('rotation', '0 0 0');
-            camera.appendChild(this.virtualAnchor);
-
-            this.isTracking = false;
-
-            this.mainTarget.addEventListener("targetFound", () => { 
-                this.isTracking = true;
-                this.updateAnchorState();
-            });
-            this.mainTarget.addEventListener("targetLost", () => { 
-                this.isTracking = false;
-                this.updateAnchorState();
-            });
-
-            // 初期アンカー状態の適用
-            setTimeout(() => this.updateAnchorState(), 100);
-        }
     },
 
-    getDistance: function(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // Earth radius in meters
-        const phi1 = lat1 * Math.PI / 180;
-        const phi2 = lat2 * Math.PI / 180;
-        const deltaPhi = (lat2 - lat1) * Math.PI / 180;
-        const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+    initGPSMode: function() {
+        const headerText = document.querySelector('#header p');
+        const outdoor = window.AppConfig.outdoor;
 
-        const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
-                  Math.cos(phi1) * Math.cos(phi2) *
-                  Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        headerText.innerText = 'GPSを取得中...';
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const useCurrentPosition = window.TestMode;
+                const latitude = useCurrentPosition
+                    ? position.coords.latitude
+                    : outdoor.center.latitude;
+                const longitude = useCurrentPosition
+                    ? position.coords.longitude
+                    : outdoor.center.longitude;
 
-        return R * c; // in meters
+                if (useCurrentPosition) {
+                    console.log('テストモードON: 現在地を実空間ARの中心として配置します。');
+                    headerText.innerText = 'GPSモード (テスト表示中)';
+                } else {
+                    console.log('テストモードOFF: YBPの設定座標を基準に配置します。');
+                    headerText.innerText = 'GPSモード: YBP水のホールに出現中！';
+                }
+
+                this.initGPSScene(latitude, longitude);
+            },
+            (error) => {
+                console.warn('GPS取得失敗。YBP水のホール位置を使用します。', error);
+                headerText.innerText = 'GPSモード (YBP水のホール表示)';
+                this.initGPSScene(outdoor.center.latitude, outdoor.center.longitude);
+            },
+            outdoor.geolocationOptions
+        );
     },
-    
-    initGPSScene: function(lat, lon) {
+
+    initDioramaMode: function() {
         const scene = document.querySelector('a-scene');
-        
-        // Create the GPS wrapper entity at the target coordinates
+        const camera = document.querySelector('a-camera') || scene;
+
+        this.mainTarget = document.createElement('a-entity');
+        this.mainTarget.setAttribute('mindar-image-target', 'targetIndex: 0');
+        scene.appendChild(this.mainTarget);
+
+        // NFTなしでも確認できるよう、カメラ正面1.2mに仮想アンカーを置く。
+        this.virtualAnchor = document.createElement('a-entity');
+        this.virtualAnchor.setAttribute('id', 'virtual-anchor');
+        this.virtualAnchor.setAttribute('position', '0 -0.1 -1.2');
+        camera.appendChild(this.virtualAnchor);
+
+        this.isTracking = false;
+        this.mainTarget.addEventListener('targetFound', () => {
+            this.isTracking = true;
+            this.updateAnchorState();
+        });
+        this.mainTarget.addEventListener('targetLost', () => {
+            this.isTracking = false;
+            this.updateAnchorState();
+        });
+        this.updateAnchorState();
+    },
+
+    initGPSScene: function(latitude, longitude) {
+        const scene = document.querySelector('a-scene');
+        const worldScale = window.AppConfig.outdoor.worldScale;
         const gpsEntity = document.createElement('a-entity');
-        gpsEntity.setAttribute('gps-new-entity-place', `latitude: ${lat}; longitude: ${lon}`);
-        
-        // Rotate -90 degrees on X to map (X, Y) of diorama to (X, -Z) of GPS world,
-        // and local Z (height) to world Y (altitude).
-        // Scale by 100 to blow up the 1m diorama range to a 100m (50m radius) real-scale range.
+
+        gpsEntity.setAttribute('gps-new-entity-place', `latitude: ${latitude}; longitude: ${longitude}`);
+        // ジオラマのXY平面を地面へ、ローカルZを実空間の高さへ対応させる。
         gpsEntity.setAttribute('rotation', '-90 0 0');
-        gpsEntity.setAttribute('scale', '100 100 100');
-        
+        gpsEntity.setAttribute('scale', `${worldScale} ${worldScale} ${worldScale}`);
+
         this.mainTarget = gpsEntity;
         scene.appendChild(gpsEntity);
-        
-        // Spawn all standard targets configured in config.js
         this.startViewMode();
     },
-    
-    clearScene: function() {
-        if (this.mainTarget) {
-            while (this.mainTarget.firstChild) {
-                this.mainTarget.removeChild(this.mainTarget.firstChild);
-            }
-        }
-        if (this.virtualAnchor) {
-            while (this.virtualAnchor.firstChild) {
-                this.virtualAnchor.removeChild(this.virtualAnchor.firstChild);
-            }
-        }
+
+    shouldShowDebugBounds: function() {
+        return window.TestMode && window.TestShowBounds !== false;
     },
-    
+
+    createTargetEntity: function(target, options = {}) {
+        const definition = typeof target === 'string' ? { id: target } : target;
+        const container = document.createElement('a-entity');
+        const logicEntity = document.createElement('a-entity');
+        const model = document.createElement('a-gltf-model');
+        const componentSettings = [`showDebugBox: ${this.shouldShowDebugBounds()}`];
+
+        if (options.seed !== undefined) componentSettings.push(`seed: ${options.seed}`);
+        if (definition.params) componentSettings.push(definition.params);
+
+        container.setAttribute('visible', 'true');
+        logicEntity.setAttribute(`${definition.id}-logic`, componentSettings.join('; '));
+        model.setAttribute('src', `#${definition.id}Model`);
+        model.setAttribute('rotation', definition.baseRot || '90 0 0');
+        model.setAttribute('animation-mixer', '');
+        logicEntity.appendChild(model);
+        container.appendChild(logicEntity);
+
+        return { container, logicEntity };
+    },
+
+    clearScene: function() {
+        [this.mainTarget, this.virtualAnchor].forEach((anchor) => {
+            while (anchor && anchor.firstChild) anchor.removeChild(anchor.firstChild);
+        });
+    },
+
     isVirtualNFTActive: function() {
-        // 設定モード > 仮想認識ON (またはテストモードONで仮想認識チェックあり)
-        return window.TestMode && (window.TestVirtualNFT !== false);
+        return window.TestMode && window.TestVirtualNFT !== false;
     },
 
     getCurrentAnchor: function() {
-        if (window.AR_MODE === 'gps') {
-            return this.mainTarget;
+        if (window.AR_MODE === 'gps') return this.mainTarget;
+        return this.isVirtualNFTActive() && !this.isTracking
+            ? this.virtualAnchor
+            : this.mainTarget;
+    },
+
+    moveChildren: function(source, destination) {
+        while (source && destination && source.firstChild) {
+            const child = source.firstChild;
+            child.setAttribute('visible', 'true');
+            if (child.object3D) child.object3D.visible = true;
+            destination.appendChild(child);
         }
-        // IF : 設定モード > 仮想認識ON かつ 実NFT未検知 -> 仮想アンカーを使用
-        if (this.isVirtualNFTActive() && !this.isTracking) {
-            return this.virtualAnchor;
-        }
-        return this.mainTarget;
     },
 
     updateAnchorState: function() {
-        if (window.AR_MODE === 'gps') return;
-        
+        if (window.AR_MODE === 'gps' || !this.mainTarget || !this.virtualAnchor) return;
+
         const headerText = document.querySelector('#header p');
+        const useVirtualAnchor = this.isVirtualNFTActive() && !this.isTracking;
+        const targetAnchor = useVirtualAnchor ? this.virtualAnchor : this.mainTarget;
+        const sourceAnchor = useVirtualAnchor ? this.mainTarget : this.virtualAnchor;
 
-        if (this.isVirtualNFTActive() && !this.isTracking) {
-            // ★ 仮想認識モード：画面中央に配置
-            if (headerText) headerText.innerText = "ジオラマ表示中 (仮想認識)";
-            if (this.virtualAnchor) {
-                this.virtualAnchor.setAttribute('visible', 'true');
-                if (this.virtualAnchor.object3D) this.virtualAnchor.object3D.visible = true;
-            }
+        this.virtualAnchor.setAttribute('visible', String(useVirtualAnchor));
+        if (this.virtualAnchor.object3D) this.virtualAnchor.object3D.visible = useVirtualAnchor;
+        this.moveChildren(sourceAnchor, targetAnchor);
 
-            // mainTargetからvirtualAnchorへ子要素（ほたりん）を移動
-            while (this.mainTarget && this.mainTarget.firstChild) {
-                const child = this.mainTarget.firstChild;
-                child.setAttribute('visible', 'true');
-                if (child.object3D) child.object3D.visible = true;
-                this.virtualAnchor.appendChild(child);
-            }
-
-            // virtualAnchor内の全子要素を表示状態に確実にする
-            if (this.virtualAnchor) {
-                Array.from(this.virtualAnchor.children).forEach(child => {
-                    child.setAttribute('visible', 'true');
-                    if (child.object3D) child.object3D.visible = true;
-                });
-            }
+        if (useVirtualAnchor) {
+            headerText.innerText = 'ジオラマ表示中 (仮想認識)';
         } else if (this.isTracking) {
-            // ★ マーカー認識成功：リアルNFTマーカー上に配置
-            if (headerText) headerText.innerText = "ジオラマが起動しました！";
-            
-            while (this.virtualAnchor && this.virtualAnchor.firstChild) {
-                const child = this.virtualAnchor.firstChild;
-                child.setAttribute('visible', 'true');
-                if (child.object3D) child.object3D.visible = true;
-                this.mainTarget.appendChild(child);
-            }
+            headerText.innerText = 'ジオラマが起動しました！';
         } else {
-            // ★ マーカー未認識 かつ 仮想認識OFF：マーカー探知待ち
-            if (headerText) headerText.innerText = "ターゲットを映してね！";
-            if (this.virtualAnchor) {
-                this.virtualAnchor.setAttribute('visible', 'false');
-                if (this.virtualAnchor.object3D) this.virtualAnchor.object3D.visible = false;
-            }
+            headerText.innerText = 'ターゲットを映してね！';
         }
-    },
-
-    updateAnchorParenting: function() {
-        this.updateAnchorState();
     },
 
     startViewMode: function() {
+        if (!this.mainTarget) return;
+
         this.clearScene();
-        
-        // config.js の viewModeTargets リストに基づいて配置
         window.AppConfig.core.viewModeTargets.forEach((target) => {
+            // 実空間で電車内に見えてしまう問題を避け、ほたりんだけを表示する。
             if (target.id === 'train') return;
 
             const spawnCount = target.count || 1;
-            
-            for (let i = 0; i < spawnCount; i++) {
-                const container = document.createElement('a-entity');
-                container.setAttribute('visible', 'true');
-                
-                const seedSetting = (spawnCount > 1) ? `seed: ${i * 50};` : '';
-                const extraParams = target.params ? target.params + ';' : '';
-                const baseRot = target.baseRot || "90 0 0";
-                
-                container.innerHTML = `
-                    <a-entity ${target.id}-logic="showDebugBox: ${window.TestMode}; ${seedSetting} ${extraParams}">
-                        <a-gltf-model src="#${target.id}Model" rotation="${baseRot}" animation-mixer></a-gltf-model>
-                    </a-entity>
-                `;
+            for (let index = 0; index < spawnCount; index++) {
+                const seed = spawnCount > 1 ? index * 50 : undefined;
+                const { container } = this.createTargetEntity(target, { seed });
                 this.getCurrentAnchor().appendChild(container);
             }
         });
-
         this.updateAnchorState();
-    },ualAnchor);
-            }
-            return this.virtualAnchor || this.mainTarget;
-        }
-        return this.mainTarget;
-    },
-
-    updateAnchorParenting: function() {
-        if (window.AR_MODE === 'gps') return;
-        
-        // 付け替え前に、アタッチ先（または virtualAnchor）を生成・接続させる
-        const targetAnchor = this.getCurrentAnchor();
-        
-        if (!this.virtualAnchor) return;
-        
-        const otherAnchor = (targetAnchor === this.mainTarget) ? this.virtualAnchor : this.mainTarget;
-        
-        while (otherAnchor.firstChild) {
-            targetAnchor.appendChild(otherAnchor.firstChild);
-        }
     }
 };
 
-// 起動時の初期化 (Dynamic Scene Ready に変更)
-window.addEventListener("ARSceneReady", () => {
+window.addEventListener('ARSceneReady', () => {
     window.ARCore.init();
-    // UIモジュールが存在すればUIの初期化も行う
     if (window.UIManager) {
         window.UIManager.init();
-    } else {
-        // ゲーム/UI機能を持たない純粋なARアプリの場合のフォールバック
-        if (window.AR_MODE !== 'gps') {
-            setTimeout(() => window.ARCore.startViewMode(), 500);
-        }
+    } else if (window.AR_MODE !== 'gps') {
+        window.ARCore.startViewMode();
     }
 });

@@ -21,6 +21,20 @@ window.AppConfig = {
             { id: "hotarin", count: 2 }
         ]
     },
+
+    // 実空間ARの基準。ジオラマ1mを100m相当に拡大してYBP周辺へ配置する。
+    outdoor: {
+        center: {
+            latitude: 35.454332476881056,
+            longitude: 139.59818021935607
+        },
+        worldScale: 100,
+        geolocationOptions: {
+            enableHighAccuracy: true,
+            timeout: 7000,
+            maximumAge: 0
+        }
+    },
     
     // ゲーム機能拡張設定（今回追加したゲーム要素用）
     game: {
