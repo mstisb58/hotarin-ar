@@ -117,7 +117,12 @@ window.ARCore = {
         const definition = typeof target === 'string' ? { id: target } : target;
         const container = document.createElement('a-entity');
         const componentSettings = [`showDebugBox: ${this.shouldShowDebugBounds()}`];
-        const characterSettings = window.AppConfig.characters[definition.id];
+        const characterSettings = Object.assign({}, window.AppConfig.characters[definition.id] || {});
+
+        // Surroundモード時は行動範囲やスケールを等身大設定で上書きする
+        if (window.AppMode.isSurround() && window.AppConfig.surround) {
+            Object.assign(characterSettings, window.AppConfig.surround);
+        }
 
         if (characterSettings) {
             Object.entries(characterSettings).forEach(([name, value]) => {
