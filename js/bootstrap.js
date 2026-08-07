@@ -114,8 +114,8 @@ window.AppBootstrap = {
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     // 背景として生カメラ映像を描画
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    // 画面中央にターゲット画像 (target.png) を合成描画
-                    if (targetImg.complete && targetImg.naturalWidth !== 0) {
+                    // 画面中央にターゲット画像 (target.png) を合成描画 (ジオラマモードのテスト時のみ)
+                    if (!window.AppMode.isSurround() && targetImg.complete && targetImg.naturalWidth !== 0) {
                         const targetSize = Math.min(canvas.width, canvas.height) * 0.5;
                         const x = (canvas.width - targetSize) / 2;
                         const y = (canvas.height - targetSize) / 2;

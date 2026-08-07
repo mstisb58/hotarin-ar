@@ -84,22 +84,28 @@ AFRAME.registerComponent('hotarin-logic', {
         this.el.object3D.position.set(px, py, pz);
         this.el.object3D.rotation.set(0, 0, angle * Math.PI / 180);
 
-        // GPSテストモード時、中心（0, 0, 0）から自機までの緑線を描画する
+        // Surroundテストモード時、キャラクターの位置が遠くからでも分かるように「光の柱」を立てる
         if (window.AR_MODE === 'surround' && window.TestMode) {
-            if (!this.lineEl) {
-                this.lineEl = document.createElement('a-entity');
-                this.el.parentNode.appendChild(this.lineEl);
+            if (!this.beaconEl) {
+                this.beaconEl = document.createElement('a-entity');
+                this.el.sceneEl.appendChild(this.beaconEl);
             }
-            this.lineEl.setAttribute('line', {
-                start: '0 0 0',
-                end: `${px} ${py} ${pz}`,
-                color: '#00ff00'
+            // ほたりんの現在位置（X, Z）に、巨大な高さの円柱を立てる
+            this.beaconEl.setAttribute('geometry', {
+                primitive: 'cylinder',
+                radius: 0.1 * scale,
+                height: 100 * scale // 空高く伸びる柱
             });
-            this.lineEl.setAttribute('visible', true);
-        } else {
-            if (this.lineEl) {
-                this.lineEl.setAttribute('visible', false);
-            }
+            this.beaconEl.setAttribute('material', {
+                color: '#ff0000',
+                opacity: 0.6,
+                transparent: true,
+                shader: 'flat'
+            });
+            this.beaconEl.setAttribute('position', `${px} 0 ${pz}`);
+        } else if (this.beaconEl) {
+            this.beaconEl.parentNode.removeChild(this.beaconEl);
+            this.beaconEl = null;
         }
     },
 
