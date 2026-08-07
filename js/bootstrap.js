@@ -13,7 +13,7 @@ window.AppBootstrap = {
         this.installSharedCamera();
 
         const requestedMode = new URLSearchParams(window.location.search).get('mode');
-        window.AR_MODE = requestedMode === 'gps' ? 'gps' : 'diorama';
+        window.AR_MODE = (requestedMode === 'surround' || requestedMode === 'gps') ? 'surround' : 'diorama';
         this.updateSpaceSwitchButton();
 
         try {
@@ -197,7 +197,7 @@ window.AppBootstrap = {
 
         if (window.AppMode.isSurround()) {
             // 等身大・周辺モード：ジャイロで見回せるようにし、背景は透明にしてビデオ要素を見せる
-            camera.setAttribute('look-controls', 'enabled: true');
+            camera.setAttribute('look-controls', 'enabled: true; magicWindowTrackingEnabled: true; touchEnabled: true;');
             camera.setAttribute('position', '0 1.6 0'); // 人の目の高さ目安
         } else {
             camera.setAttribute('position', '0 0 0');
@@ -235,10 +235,4 @@ window.AppBootstrap = {
 };
 
 window.switchARMode = () => window.AppBootstrap.switchSpace();
-// Bootstrap初期化時のモード設定
-const urlParams = new URLSearchParams(window.location.search);
-const requestedMode = urlParams.get('mode');
-// 古いgpsパラメータへの互換性フォールバックを含む
-window.AR_MODE = (requestedMode === 'surround' || requestedMode === 'gps') ? 'surround' : 'diorama';
-
 window.AppBootstrap.init();
