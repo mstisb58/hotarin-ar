@@ -99,17 +99,13 @@ window.ARCore = {
         this.physicalAnchor.setAttribute('mindar-image-target', 'targetIndex: 0');
         scene.appendChild(this.physicalAnchor);
 
-        // 2. 仮想マーカー認識用アンカー (30cm幅のNFTを1.2m先に置いた状態と同等)
+        // 2. 仮想マーカー認識用アンカー (画面中央 400x400 マーカーのセンター正面に配置)
         this.virtualAnchor = document.createElement('a-entity');
         this.virtualAnchor.setAttribute('id', 'virtual-anchor');
-        this.virtualAnchor.setAttribute(
-            'position',
-            `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
-        );
-        this.virtualAnchor.setAttribute(
-            'scale',
-            `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
-        );
+        // カメラ正面 -1.0m の位置に、マーカー平面がカメラを正面から向くよう配置
+        this.virtualAnchor.setAttribute('position', '0 0 -1.0');
+        this.virtualAnchor.setAttribute('rotation', '-90 0 0');
+        this.virtualAnchor.setAttribute('scale', '0.6 0.6 0.6');
         camera.appendChild(this.virtualAnchor);
 
         this.physicalTargetFound = false;
@@ -250,7 +246,12 @@ window.ARCore = {
     setAnchorVisible: function(anchor, visible) {
         if (!anchor) return;
         anchor.setAttribute('visible', String(visible));
-        if (anchor.object3D) anchor.object3D.visible = visible;
+        if (anchor.object3D) {
+            anchor.object3D.visible = visible;
+            anchor.object3D.traverse((node) => {
+                node.visible = visible;
+            });
+        }
     },
 
     /**
