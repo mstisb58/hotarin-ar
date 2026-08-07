@@ -452,10 +452,10 @@ window.UIManager = {
             : window.AppConfig.core.viewModeTargets[0].id;
         const character = window.AppConfig.characters[characterId];
         const targetWidth = window.AppConfig.diorama.targetWidthMeters;
-        const rangeWidth = (character.dioramaWidth * targetWidth).toFixed(2);
-        const rangeDepth = (character.dioramaDepth * targetWidth).toFixed(2);
-        const minHeight = (character.minHeight * targetWidth).toFixed(3);
-        const maxHeight = (character.maxHeight * targetWidth).toFixed(3);
+        const rangeWidth = character.flightWidthMeters.toFixed(2);
+        const rangeDepth = character.flightDepthMeters.toFixed(2);
+        const minHeight = character.minHeightMeters.toFixed(3);
+        const maxHeight = character.maxHeightMeters.toFixed(3);
 
         els.debugHud.innerHTML = `
             <h4>📐 Debug & Size Info</h4>
