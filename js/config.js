@@ -34,7 +34,8 @@ window.AppConfig = {
             dioramaDepth: 1,
             minHeight: 0.05,
             maxHeight: 0.3,
-            modelScale: 0.4
+            modelScale: 0.2, // ちびほたりん (さらに小さく)
+            speed: 2.5       // ゲームモード用に素早く飛ぶ
         }
     },
 
