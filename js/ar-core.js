@@ -269,6 +269,12 @@ window.ARCore = {
         this.setAnchorVisible(this.virtualAnchor, useVirtualAnchor);
         this.moveSceneContent(sourceAnchor, targetAnchor);
 
+        // テストモード時は画面中央のマーカーガイド（400x400px）をオーバーレイ表示
+        const overlay = document.getElementById('test-marker-overlay');
+        if (overlay) {
+            overlay.classList.toggle('hidden', !useVirtualAnchor);
+        }
+
         if (headerText) {
             if (useVirtualAnchor) {
                 headerText.innerText = 'ジオラマ表示中 (仮想認識)';

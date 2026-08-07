@@ -32,6 +32,7 @@ window.UIManager = {
                 testModeCheckbox: document.getElementById('test-mode-checkbox'),
                 testShowBoundsCheckbox: document.getElementById('test-show-bounds-checkbox'),
                 testSuboptions: document.getElementById('test-suboptions'),
+                testMarkerOverlay: document.getElementById('test-marker-overlay'),
                 debugHud: document.getElementById('debug-hud'),
                 creditsInfo: document.getElementById('credits-info'),
                 gitCommit: document.getElementById('git-commit'),
@@ -344,6 +345,9 @@ window.UIManager = {
         if (els.testShowBoundsCheckbox) els.testShowBoundsCheckbox.checked = window.TestShowBounds;
         if (els.testSuboptions) {
             els.testSuboptions.classList.toggle('hidden', !window.AppMode.isTest());
+        }
+        if (els.testMarkerOverlay) {
+            els.testMarkerOverlay.classList.toggle('hidden', !window.AppMode.isTest() || window.AppMode.isOutdoor());
         }
     },
 

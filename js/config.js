@@ -16,8 +16,8 @@ window.AppConfig = {
     // MindARではローカル1単位が認識画像の幅。
     diorama: {
         targetWidthMeters: 0.3,
-        testAnchorDistanceMeters: 1.2,
-        testAnchorVerticalOffsetMeters: -0.1
+        testAnchorDistanceMeters: 1.0,
+        testAnchorVerticalOffsetMeters: 0.0
     },
 
     // モーションとデバッグ表示で共有する相対寸法設定 (NFT幅1を基準)
