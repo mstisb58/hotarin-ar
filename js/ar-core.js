@@ -94,23 +94,10 @@ window.ARCore = {
         const diorama = window.AppConfig.diorama;
         if (!scene || !camera) return;
 
-        // 1. 実マーカー認識用アンカー (実NFT用)
+        // マーカー認識用アンカー (実装・テストで共通利用)
         this.physicalAnchor = document.createElement('a-entity');
         this.physicalAnchor.setAttribute('mindar-image-target', 'targetIndex: 0');
         scene.appendChild(this.physicalAnchor);
-
-        // 2. 仮想マーカー認識用アンカー (テストモード用: カメラ前方1.2mに置いた状態をモック)
-        this.virtualAnchor = document.createElement('a-entity');
-        this.virtualAnchor.setAttribute('id', 'virtual-anchor');
-        this.virtualAnchor.setAttribute(
-            'position',
-            `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
-        );
-        this.virtualAnchor.setAttribute(
-            'scale',
-            `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
-        );
-        camera.appendChild(this.virtualAnchor);
 
         this.physicalTargetFound = false;
         this.physicalAnchor.addEventListener('targetFound', () => {
@@ -222,9 +209,7 @@ window.ARCore = {
      */
     getActiveAnchor: function() {
         if (window.AppMode.isOutdoor()) return this.outdoorAnchor;
-        return window.AppMode.isTest()
-            ? this.virtualAnchor
-            : this.physicalAnchor;
+        return this.physicalAnchor;
     },
 
     /**
@@ -264,21 +249,43 @@ window.ARCore = {
 
     /**
      * テスト/実装の環境状態の適用
-     * isTest ? 画面中央で認識中 : 物理NFTを探索/認識
+     * isTest ? 画面中央で仮想認識中 : 物理NFTを探索/認識
      */
     applyEnvironmentState: function() {
-        if (window.AppMode.isOutdoor() || !this.physicalAnchor || !this.virtualAnchor) return;
+        if (window.AppMode.isOutdoor() || !this.physicalAnchor) return;
 
         const headerText = document.querySelector('#header p');
         const isTest = window.AppMode.isTest();
         const isRecognized = isTest || this.physicalTargetFound;
+        const diorama = window.AppConfig.diorama;
 
-        const activeAnchor = isTest ? this.virtualAnchor : this.physicalAnchor;
-        const inactiveAnchor = isTest ? this.physicalAnchor : this.virtualAnchor;
+        if (isTest) {
+            // テストモード時：マーカーアンカー(physicalAnchor)自体をカメラ前方1.2mに配置
+            const camera = document.querySelector('a-camera');
+            if (camera && this.physicalAnchor.parentNode !== camera) {
+                camera.appendChild(this.physicalAnchor);
+            }
+            this.physicalAnchor.setAttribute(
+                'position',
+                `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
+            );
+            this.physicalAnchor.setAttribute('rotation', '0 0 0');
+            this.physicalAnchor.setAttribute(
+                'scale',
+                `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
+            );
+        } else {
+            // 実装モード時：マーカーアンカーをscene直下に戻し、MindARの自動認識に任せる
+            const scene = document.querySelector('a-scene');
+            if (scene && this.physicalAnchor.parentNode !== scene) {
+                scene.appendChild(this.physicalAnchor);
+            }
+            this.physicalAnchor.removeAttribute('position');
+            this.physicalAnchor.removeAttribute('rotation');
+            this.physicalAnchor.removeAttribute('scale');
+        }
 
-        this.setAnchorVisible(activeAnchor, isRecognized);
-        this.setAnchorVisible(inactiveAnchor, false);
-        this.moveSceneContent(inactiveAnchor, activeAnchor);
+        this.setAnchorVisible(this.physicalAnchor, isRecognized);
 
         const overlay = document.getElementById('test-marker-overlay');
         if (overlay) {
