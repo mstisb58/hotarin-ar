@@ -59,10 +59,12 @@ window.AppBootstrap = {
     installSharedCamera: function() {
         if (!navigator.mediaDevices?.getUserMedia) return;
 
+        // 実装モード（本番）の場合は、一切カメラストリームへ介入しない（MindARのネイティブ処理に完全に任せる）
+        const isTest = window.AppMode && window.AppMode.isTest();
+        if (!isTest) return;
+
         const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = async (requestedConstraints) => {
-            const isTest = window.AppMode && window.AppMode.isTest();
-
             // すでにストリームが生成済みの場合はクローンを返す
             const activeTrack = this.activeCameraStream?.getVideoTracks()[0];
             if (activeTrack?.readyState === 'live') {
@@ -84,12 +86,6 @@ window.AppBootstrap = {
             } catch (error) {
                 console.warn('共通カメラ設定を利用できないため、要求された設定を使用します。', error);
                 rawStream = await originalGetUserMedia(requestedConstraints);
-            }
-
-            // 実装モード時はカメラの生ストリームをそのまま使用
-            if (!isTest) {
-                this.activeCameraStream = rawStream;
-                return rawStream.clone();
             }
 
             // テストモード時は Canvas を用いてカメラ映像中央にターゲット画像を合成する

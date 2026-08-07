@@ -377,12 +377,9 @@ window.UIManager = {
         window.TestMode = checked;
         this.applyDebugBoxState();
 
-        if (window.AppMode.isOutdoor()) {
-            alert('GPSの基準点を再設定するため、ページをリロードします。');
-            window.location.reload();
-        } else {
-            this.refreshExperienceForTestSettings();
-        }
+        // カメラストリーム(getUserMedia)のフック切り替え等が必要なため、常にページをリロードする
+        alert('設定を適用するため、ページを再読み込みします。');
+        window.location.reload();
     },
 
     /**
