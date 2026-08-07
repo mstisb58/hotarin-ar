@@ -264,6 +264,15 @@ window.ARCore = {
         const targetAnchor = useVirtualAnchor ? this.virtualAnchor : this.physicalAnchor;
         const sourceAnchor = useVirtualAnchor ? this.physicalAnchor : this.virtualAnchor;
 
+        // テストモード時は MindAR システムにマーカー認識済みであることを認識させる
+        if (useVirtualAnchor && this.physicalAnchor) {
+            try {
+                this.physicalAnchor.emit('targetFound', null, false);
+            } catch (e) {
+                // ignore
+            }
+        }
+
         this.setAnchorVisible(this.physicalAnchor, usePhysicalAnchor);
         this.setAnchorVisible(this.virtualAnchor, useVirtualAnchor);
         this.moveSceneContent(sourceAnchor, targetAnchor);
