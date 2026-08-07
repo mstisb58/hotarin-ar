@@ -3,9 +3,9 @@
  * 空間 (diorama/outdoor) → 環境 (test/implementation) → 体験 (view/game)
  */
 window.AppMode = {
-    /** @returns {'outdoor' | 'diorama'} */
+    /** @returns {'surround' | 'diorama'} */
     get space() {
-        return window.AR_MODE === 'gps' ? 'outdoor' : 'diorama';
+        return window.AR_MODE === 'surround' ? 'surround' : 'diorama';
     },
 
     /** @returns {'test' | 'implementation'} */
@@ -24,8 +24,8 @@ window.AppMode = {
     },
 
     /** @returns {boolean} */
-    isOutdoor: function() {
-        return this.space === 'outdoor';
+    isSurround: function() {
+        return this.space === 'surround';
     },
 
     /** @returns {boolean} */

@@ -18,7 +18,7 @@ AFRAME.registerComponent('sounyan-logic', {
 
     init: function () {
         // ★ 初期スケールを適用 (GPSモードの時は0.25、ジオラマ時は0.3)
-        const s = (window.AR_MODE === 'gps') ? 0.25 : this.data.modelScale;
+        const s = (window.AR_MODE === 'surround') ? 0.25 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
 
         // ★ 初期位置と回転を適用
@@ -27,7 +27,7 @@ AFRAME.registerComponent('sounyan-logic', {
 
     update: function () {
         // index.html等からパラメータが変更された場合に位置や大きさを再適用する
-        const s = (window.AR_MODE === 'gps') ? 0.25 : this.data.modelScale;
+        const s = (window.AR_MODE === 'surround') ? 0.25 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
         this.applyTransform();
     },

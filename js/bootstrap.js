@@ -153,12 +153,9 @@ window.AppBootstrap = {
      * @returns {Promise<void>}
      */
     loadARLibrary: function() {
-        const headerText = document.querySelector('#header p');
-        if (window.AppMode.isOutdoor()) {
-            if (headerText) headerText.innerText = 'GPSを取得中...';
-            return this.loadScript(
-                'https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js'
-            );
+        // Surroundモード時は追加のARライブラリは不要（A-Frame標準のlook-controlsを使うため）
+        if (window.AppMode.isSurround()) {
+            return Promise.resolve();
         }
         return this.loadScript(
             'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js'
@@ -198,13 +195,10 @@ window.AppBootstrap = {
         );
         scene.innerHTML = '<a-assets id="asset-manager"></a-assets>';
 
-        if (window.AppMode.isOutdoor()) {
-            camera.setAttribute('gps-camera', 'gpsMinDistance: 5;');
-            camera.setAttribute('rotation-reader', '');
-            scene.setAttribute(
-                'arjs',
-                'sourceType: webcam; videoTexture: false; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 720; destWidth: 1280; destHeight: 720;'
-            );
+        if (window.AppMode.isSurround()) {
+            // 等身大・周辺モード：ジャイロで見回せるようにし、背景は透明にしてビデオ要素を見せる
+            camera.setAttribute('look-controls', 'enabled: true');
+            camera.setAttribute('position', '0 1.6 0'); // 人の目の高さ目安
         } else {
             camera.setAttribute('position', '0 0 0');
             camera.setAttribute('look-controls', 'enabled: false');
@@ -227,18 +221,24 @@ window.AppBootstrap = {
         const button = document.getElementById('gps-switch-btn');
         if (!button) return;
 
-        const outdoor = window.AppMode.isOutdoor();
-        button.innerText = outdoor ? 'ジオラマモード' : '外で見てみる！ (GPS)';
-        button.classList.toggle('gps-mode-active', outdoor);
+        const isSurround = window.AppMode.isSurround();
+        button.innerText = isSurround ? 'ジオラマモード' : '周囲に表示 (等身大)';
+        button.classList.toggle('gps-mode-active', isSurround);
     },
 
     /**
-     * ジオラマモード ↔ 外で見る(GPS)モードのトグル切り替え
+     * ジオラマモード ↔ 等身大(Surround)モードのトグル切り替え
      */
     switchSpace: function() {
-        window.location.search = window.AppMode.isOutdoor() ? '?mode=diorama' : '?mode=gps';
+        window.location.search = window.AppMode.isSurround() ? '?mode=diorama' : '?mode=surround';
     }
 };
 
 window.switchARMode = () => window.AppBootstrap.switchSpace();
+// Bootstrap初期化時のモード設定
+const urlParams = new URLSearchParams(window.location.search);
+const requestedMode = urlParams.get('mode');
+// 古いgpsパラメータへの互換性フォールバックを含む
+window.AR_MODE = (requestedMode === 'surround' || requestedMode === 'gps') ? 'surround' : 'diorama';
+
 window.AppBootstrap.init();

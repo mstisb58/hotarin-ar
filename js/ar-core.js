@@ -4,7 +4,7 @@
 window.ARCore = {
     physicalAnchor: null,
     contentAnchor: null,
-    outdoorAnchor: null,
+    surroundAnchor: null,
     physicalTargetFound: false,
 
     /**
@@ -12,8 +12,8 @@ window.ARCore = {
      */
     init: async function() {
         await this.loadAssets();
-        if (window.AppMode.isOutdoor()) {
-            this.initGPSMode();
+        if (window.AppMode.isSurround()) {
+            this.initSurroundMode();
         } else {
             this.initDioramaMode();
         }
@@ -50,39 +50,28 @@ window.ARCore = {
     },
 
     /**
-     * 屋外 (GPS) モードの初期化
+     * 等身大・周囲 (Surround) モードの初期化
      */
-    initGPSMode: function() {
+    initSurroundMode: function() {
         const headerText = document.querySelector('#header p');
-        const outdoor = window.AppConfig.outdoor;
+        if (headerText) {
+            headerText.innerText = window.AppMode.isTest()
+                ? '等身大・周囲モード (テスト表示中)'
+                : '等身大・周囲モード';
+        }
 
-        if (headerText) headerText.innerText = 'GPSを取得中...';
+        const scene = document.querySelector('a-scene');
+        if (!scene) return;
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const useCurrentPosition = window.AppMode.isTest();
-                const latitude = useCurrentPosition
-                    ? position.coords.latitude
-                    : outdoor.center.latitude;
-                const longitude = useCurrentPosition
-                    ? position.coords.longitude
-                    : outdoor.center.longitude;
-
-                if (headerText) {
-                    headerText.innerText = useCurrentPosition
-                        ? 'GPSモード (テスト表示中)'
-                        : 'GPSモード: YBP水のホールに出現中！';
-                }
-
-                this.initGPSScene(latitude, longitude);
-            },
-            (error) => {
-                console.warn('GPS取得失敗。YBP水のホール位置を使用します。', error);
-                if (headerText) headerText.innerText = 'GPSモード (YBP水のホール表示)';
-                this.initGPSScene(outdoor.center.latitude, outdoor.center.longitude);
-            },
-            outdoor.geolocationOptions
-        );
+        // Surroundモードでは、カメラと同じ空間 (0 0 0) にアンカーを置き、
+        // その周囲を大きな半径で飛ばす
+        const surroundAnchor = document.createElement('a-entity');
+        surroundAnchor.setAttribute('position', '0 0 0');
+        
+        this.surroundAnchor = surroundAnchor;
+        scene.appendChild(surroundAnchor);
+        
+        this.startViewMode();
     },
 
     /**
@@ -91,7 +80,6 @@ window.ARCore = {
     initDioramaMode: function() {
         const scene = document.querySelector('a-scene');
         const camera = document.querySelector('a-camera') || scene;
-        const diorama = window.AppConfig.diorama;
         if (!scene || !camera) return;
 
         // マーカー認識用アンカー (MindAR制御用)
@@ -109,27 +97,6 @@ window.ARCore = {
             this.applyEnvironmentState();
         });
         this.applyEnvironmentState();
-    },
-
-    /**
-     * GPSシーン用アンカー生成
-     * @param {number} latitude
-     * @param {number} longitude
-     */
-    initGPSScene: function(latitude, longitude) {
-        const scene = document.querySelector('a-scene');
-        if (!scene) return;
-
-        const worldScale = window.AppConfig.outdoor.worldScale;
-        const gpsEntity = document.createElement('a-entity');
-
-        gpsEntity.setAttribute('gps-new-entity-place', `latitude: ${latitude}; longitude: ${longitude}`);
-        gpsEntity.setAttribute('rotation', '-90 0 0');
-        gpsEntity.setAttribute('scale', `${worldScale} ${worldScale} ${worldScale}`);
-
-        this.outdoorAnchor = gpsEntity;
-        scene.appendChild(gpsEntity);
-        this.startViewMode();
     },
 
     /**
@@ -179,8 +146,9 @@ window.ARCore = {
      * 全アンカー内のコンテンツをクリア
      */
     clearScene: function() {
-        [this.physicalAnchor, this.outdoorAnchor].forEach((anchor) => {
-            while (anchor && anchor.firstChild) {
+        [this.physicalAnchor, this.surroundAnchor].forEach((anchor) => {
+            if (!anchor) return;
+            while (anchor.firstChild) {
                 anchor.removeChild(anchor.firstChild);
             }
         });
@@ -208,7 +176,7 @@ window.ARCore = {
      * @returns {HTMLElement | null}
      */
     getActiveAnchor: function() {
-        if (window.AppMode.isOutdoor()) return this.outdoorAnchor;
+        if (window.AppMode.isSurround()) return this.surroundAnchor;
         return this.physicalAnchor;
     },
 
@@ -230,7 +198,7 @@ window.ARCore = {
      * 実装モード時: 物理NFTを探索 / 認識
      */
     isTargetRecognized: function() {
-        if (window.AppMode.isOutdoor()) return true;
+        if (window.AppMode.isSurround()) return true;
         return window.AppMode.isTest() ? true : this.physicalTargetFound;
     },
 
@@ -239,7 +207,7 @@ window.ARCore = {
      * カメラストリームハックにより、テストモードでも物理アンカーとして動作
      */
     applyEnvironmentState: function() {
-        if (window.AppMode.isOutdoor() || !this.physicalAnchor) return;
+        if (window.AppMode.isSurround() || !this.physicalAnchor) return;
 
         const headerText = document.querySelector('#header p');
         const isTest = window.AppMode.isTest();

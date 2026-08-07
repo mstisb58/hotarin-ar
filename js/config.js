@@ -49,19 +49,14 @@ window.AppConfig = {
         ]
     },
 
-    // 屋外空間 (GPS AR.js) 設定
-    // ジオラマ1mを100m相当に拡大してYBP周辺へ配置
-    outdoor: {
-        center: {
-            latitude: 35.454332476881056,
-            longitude: 139.59818021935607
-        },
-        worldScale: 100,
-        geolocationOptions: {
-            enableHighAccuracy: true,
-            timeout: 7000,
-            maximumAge: 0
-        }
+    // 等身大・周囲 (Surround) モード設定
+    // 自分の周り (半径4mなど) に等身大のキャラクターを飛ばす
+    surround: {
+        flightRadiusMeters: 4.0,
+        minHeightMeters: 1.0,
+        maxHeightMeters: 3.0,
+        modelScale: 10.0, // 等身大
+        speed: 0.5
     },
 
     // ゲームモード設定

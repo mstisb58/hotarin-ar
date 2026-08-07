@@ -20,7 +20,7 @@ AFRAME.registerComponent('hotarin-logic', {
 
     // 内部座標スケールへの変換係数
     getScaleFactor: function() {
-        if (window.AR_MODE === 'gps') return 1;
+        if (window.AR_MODE === 'surround') return 1;
         const targetWidth = window.AppConfig?.diorama?.targetWidthMeters || 1.0;
         return 1.0 / targetWidth;
     },
@@ -85,7 +85,7 @@ AFRAME.registerComponent('hotarin-logic', {
         this.el.object3D.rotation.set(0, 0, angle * Math.PI / 180);
 
         // GPSテストモード時、中心（0, 0, 0）から自機までの緑線を描画する
-        if (window.AR_MODE === 'gps' && window.TestMode) {
+        if (window.AR_MODE === 'surround' && window.TestMode) {
             if (!this.lineEl) {
                 this.lineEl = document.createElement('a-entity');
                 this.el.parentNode.appendChild(this.lineEl);

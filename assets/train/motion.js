@@ -51,7 +51,7 @@ AFRAME.registerComponent('train-logic', {
         }
 
         // ★ 重要：自身のエンティティにスケールを適用 (GPSモードの時は0.25、ジオラマ時は0.4)
-        const s = (window.AR_MODE === 'gps') ? 0.25 : this.data.modelScale;
+        const s = (window.AR_MODE === 'surround') ? 0.25 : this.data.modelScale;
         this.el.setAttribute('scale', { x: s, y: s, z: s });
     },
 
