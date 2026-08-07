@@ -57,29 +57,69 @@ AFRAME.registerComponent('hotarin2-logic', {
         const timeOffset = d.seed * 1234.5;
         const t = (((Date.now() / 1000) + timeOffset) % 100000) * d.speed;
 
-        // 円筒形の内部座標サイズ
-        const rMax = d.flightRadiusMeters * scale;
-        const cz = ((d.maxHeightMeters + d.minHeightMeters) / 2) * scale;
-        const rz = ((d.maxHeightMeters - d.minHeightMeters) / 2) * scale;
+        let px, py, pz;
 
-        // 動きを複雑で不規則にする（ゲーム用なので不規則に飛ぶ）
-        const radius = (0.3 + 0.7 * Math.abs(Math.sin(t * 1.3))) * rMax;
-        const theta = t * 1.5 + Math.sin(t * 0.9);
+        if (window.AR_MODE === 'surround') {
+            // Surround モード: XZ平面が水平、Y軸が高さ
+            const maxRadius = d.flightRadiusMeters * scale;
+            // 動きを複雑で不規則にする（ゲーム用なので不規則に飛ぶ）
+            const radius = (0.3 + 0.7 * Math.abs(Math.sin(t * 1.3))) * maxRadius;
+            const theta = t * 1.5 + Math.sin(t * 0.9);
 
-        const px = radius * Math.cos(theta);
-        const py = radius * Math.sin(theta);
-        const pz = cz + ((Math.sin(t * 1.8) + Math.cos(t * 1.4)) / 2) * rz;
+            px = radius * Math.cos(theta);
+            pz = radius * Math.sin(theta);
 
-        // 進行方向の計算
-        const nt = t + 0.02;
-        const nRadius = (0.3 + 0.7 * Math.abs(Math.sin(nt * 1.3))) * rMax;
-        const nTheta = nt * 1.5 + Math.sin(nt * 0.9);
-        const nx = nRadius * Math.cos(nTheta);
-        const ny = nRadius * Math.sin(nTheta);
-        const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
+            const minH = d.minHeightMeters * scale;
+            const maxH = d.maxHeightMeters * scale;
+            const hRange = maxH - minH;
+            py = minH + (hRange / 2) + ((Math.sin(t * 1.8) + Math.cos(t * 1.4)) / 2) * (hRange / 2);
 
-        this.el.object3D.position.set(px, py, pz);
-        this.el.object3D.rotation.set(0, 0, angle * Math.PI / 180);
+            // 進行方向の計算
+            const nt = t + 0.05;
+            const nRadius = (0.3 + 0.7 * Math.abs(Math.sin(nt * 1.3))) * maxRadius;
+            const nTheta = nt * 1.5 + Math.sin(nt * 0.9);
+            const nx = nRadius * Math.cos(nTheta);
+            const nz = nRadius * Math.sin(nTheta);
+            const ny = minH + (hRange / 2) + ((Math.sin(nt * 1.8) + Math.cos(nt * 1.4)) / 2) * (hRange / 2);
+
+            this.el.object3D.position.set(px, py, pz);
+            
+            // 進行方向へ向かせる (Y軸ヨー回転)
+            const dx = nx - px;
+            const dz = nz - pz;
+            const dy = ny - py;
+            
+            const yaw = Math.atan2(dx, dz);
+            // 上下への傾き (ピッチ)
+            const pitch = -Math.atan2(dy, Math.sqrt(dx*dx + dz*dz));
+            // ゲームモードは揺れを激しく
+            const roll = Math.sin(t * 4) * 0.25;
+
+            this.el.object3D.rotation.set(pitch, yaw, roll);
+
+        } else {
+            // Diorama モード: XY平面が水平、Z軸が高さの特殊座標
+            const rMax = d.flightRadiusMeters * scale;
+            const cz = ((d.maxHeightMeters + d.minHeightMeters) / 2) * scale;
+            const rz = ((d.maxHeightMeters - d.minHeightMeters) / 2) * scale;
+
+            const radius = (0.3 + 0.7 * Math.abs(Math.sin(t * 1.3))) * rMax;
+            const theta = t * 1.5 + Math.sin(t * 0.9);
+
+            px = radius * Math.cos(theta);
+            py = radius * Math.sin(theta);
+            pz = cz + ((Math.sin(t * 1.8) + Math.cos(t * 1.4)) / 2) * rz;
+
+            const nt = t + 0.02;
+            const nRadius = (0.3 + 0.7 * Math.abs(Math.sin(nt * 1.3))) * rMax;
+            const nTheta = nt * 1.5 + Math.sin(nt * 0.9);
+            const nx = nRadius * Math.cos(nTheta);
+            const ny = nRadius * Math.sin(nTheta);
+            const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
+
+            this.el.object3D.position.set(px, py, pz);
+            this.el.object3D.rotation.set(0, 0, angle * Math.PI / 180);
+        }
 
         // Surroundテストモード時、キャラクターの位置が遠くからでも分かるように「光の柱」を立てる
         if (window.AR_MODE === 'surround' && window.TestMode) {
