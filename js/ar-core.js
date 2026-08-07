@@ -133,12 +133,14 @@ window.ARCore = {
         if (options.seed !== undefined) componentSettings.push(`seed: ${options.seed}`);
         if (definition.params) componentSettings.push(definition.params);
 
+        const baseRot = window.AppMode.isSurround() ? '0 0 0' : (definition.baseRot || '90 0 0');
+
         container.setAttribute('visible', 'true');
         container.innerHTML = `
             <a-entity ${definition.id}-logic="${componentSettings.join('; ')}">
                 <a-gltf-model
                     src="#${definition.id}Model"
-                    rotation="${definition.baseRot || '90 0 0'}"
+                    rotation="${baseRot}"
                     animation-mixer>
                 </a-gltf-model>
             </a-entity>
