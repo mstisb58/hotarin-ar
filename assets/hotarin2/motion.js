@@ -89,8 +89,8 @@ AFRAME.registerComponent('hotarin2-logic', {
             const dz = nz - pz;
             const dy = ny - py;
             
-            // カニ歩き修正
-            const yaw = Math.atan2(dx, dz) + Math.PI / 2;
+            // カニ歩き（バック走行）修正
+            const yaw = Math.atan2(dx, dz) - Math.PI / 2;
             // 上下への傾き (ピッチ)
             const pitch = -Math.atan2(dy, Math.sqrt(dx*dx + dz*dz));
             // ゲームモードは揺れを激しく

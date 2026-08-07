@@ -89,8 +89,8 @@ AFRAME.registerComponent('hotarin-logic', {
             const dz = nz - pz;
             const dy = ny - py;
             
-            // カニ歩き（自分を向いてしまう）問題を修正するため、さらに90度(Math.PI / 2)オフセットを追加
-            const yaw = Math.atan2(dx, dz) + Math.PI / 2;
+            // カニ歩き（バック走行）修正: さらに180度反転させて前を向かせる
+            const yaw = Math.atan2(dx, dz) - Math.PI / 2;
             // 上下への傾き (ピッチ)
             const pitch = -Math.atan2(dy, Math.sqrt(dx*dx + dz*dz));
             // 揺らぎ (ロール)
