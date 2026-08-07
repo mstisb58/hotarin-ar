@@ -36,7 +36,10 @@ window.AppBootstrap = {
      * ローカルストレージからの設定復元
      */
     restoreSettings: function() {
-        window.TestMode = this.readBooleanSetting('testMode', false);
+        // テストモードはページロード時は常にOFF（実装モード）から開始する
+        window.TestMode = false;
+        localStorage.setItem('testMode', 'false');
+
         window.TestShowBounds = this.readBooleanSetting(
             'testShowBounds',
             window.AppConfig.testModeDefaults.showBounds
