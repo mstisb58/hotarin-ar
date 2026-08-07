@@ -61,6 +61,9 @@ window.AppBootstrap = {
 
         const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia = async (requestedConstraints) => {
+            const isTest = window.AppMode && window.AppMode.isTest();
+
+            // すでにストリームが生成済みの場合はクローンを返す
             const activeTrack = this.activeCameraStream?.getVideoTracks()[0];
             if (activeTrack?.readyState === 'live') {
                 return this.activeCameraStream.clone();
@@ -75,13 +78,55 @@ window.AppBootstrap = {
                 }
             };
 
+            let rawStream;
             try {
-                this.activeCameraStream = await originalGetUserMedia(sharedConstraints);
+                rawStream = await originalGetUserMedia(sharedConstraints);
             } catch (error) {
                 console.warn('共通カメラ設定を利用できないため、要求された設定を使用します。', error);
-                this.activeCameraStream = await originalGetUserMedia(requestedConstraints);
+                rawStream = await originalGetUserMedia(requestedConstraints);
             }
-            return this.activeCameraStream.clone();
+
+            // 実装モード時はカメラの生ストリームをそのまま使用
+            if (!isTest) {
+                this.activeCameraStream = rawStream;
+                return rawStream.clone();
+            }
+
+            // テストモード時は Canvas を用いてカメラ映像中央にターゲット画像を合成する
+            const video = document.createElement('video');
+            video.srcObject = rawStream;
+            video.muted = true;
+            video.playsInline = true;
+            await video.play();
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 1280;
+            canvas.height = 720;
+            const ctx = canvas.getContext('2d');
+
+            const targetImg = new Image();
+            targetImg.src = window.AppConfig?.core?.masterMind.replace('.mind', '.png') || 'assets/target.png';
+
+            const renderFrame = () => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    // 背景として生カメラ映像を描画
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    // 画面中央にターゲット画像 (target.png) を合成描画
+                    if (targetImg.complete && targetImg.naturalWidth !== 0) {
+                        const targetSize = Math.min(canvas.width, canvas.height) * 0.5;
+                        const x = (canvas.width - targetSize) / 2;
+                        const y = (canvas.height - targetSize) / 2;
+                        ctx.drawImage(targetImg, x, y, targetSize, targetSize);
+                    }
+                }
+                requestAnimationFrame(renderFrame);
+            };
+            renderFrame();
+
+            // 合成されたCanvasから30fpsのストリームを生成し、ARエンジン(MindAR)へ渡す
+            const canvasStream = canvas.captureStream(30);
+            this.activeCameraStream = canvasStream;
+            return canvasStream.clone();
         };
     },
 

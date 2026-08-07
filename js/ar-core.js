@@ -99,11 +99,6 @@ window.ARCore = {
         this.physicalAnchor.setAttribute('mindar-image-target', 'targetIndex: 0');
         scene.appendChild(this.physicalAnchor);
 
-        // 実際のコンテンツ（ほたりん等）を配置するコンテナ
-        this.contentAnchor = document.createElement('a-entity');
-        this.contentAnchor.setAttribute('id', 'content-anchor');
-        this.physicalAnchor.appendChild(this.contentAnchor);
-
         this.physicalTargetFound = false;
         this.physicalAnchor.addEventListener('targetFound', () => {
             this.physicalTargetFound = true;
@@ -184,7 +179,7 @@ window.ARCore = {
      * 全アンカー内のコンテンツをクリア
      */
     clearScene: function() {
-        [this.contentAnchor, this.outdoorAnchor].forEach((anchor) => {
+        [this.physicalAnchor, this.outdoorAnchor].forEach((anchor) => {
             while (anchor && anchor.firstChild) {
                 anchor.removeChild(anchor.firstChild);
             }
@@ -214,7 +209,7 @@ window.ARCore = {
      */
     getActiveAnchor: function() {
         if (window.AppMode.isOutdoor()) return this.outdoorAnchor;
-        return this.contentAnchor;
+        return this.physicalAnchor;
     },
 
 
@@ -241,45 +236,16 @@ window.ARCore = {
 
     /**
      * テスト/実装の環境状態の適用
-     * isTest ? 画面中央で仮想認識中 : 物理NFTを探索/認識
+     * カメラストリームハックにより、テストモードでも物理アンカーとして動作
      */
     applyEnvironmentState: function() {
-        if (window.AppMode.isOutdoor() || !this.physicalAnchor || !this.contentAnchor) return;
+        if (window.AppMode.isOutdoor() || !this.physicalAnchor) return;
 
         const headerText = document.querySelector('#header p');
         const isTest = window.AppMode.isTest();
         const isRecognized = isTest || this.physicalTargetFound;
-        const diorama = window.AppConfig.diorama;
 
-        if (isTest) {
-            // テストモード時：コンテンツコンテナをカメラ直下に配置（MindARの強制カリングを回避）
-            const camera = document.querySelector('a-camera');
-            if (camera && this.contentAnchor.parentNode !== camera) {
-                camera.appendChild(this.contentAnchor);
-            }
-            this.contentAnchor.setAttribute(
-                'position',
-                `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
-            );
-            this.contentAnchor.setAttribute(
-                'scale',
-                `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
-            );
-        } else {
-            // 実装モード時：コンテンツコンテナを物理アンカー直下に戻し、MindARに追従させる
-            if (this.contentAnchor.parentNode !== this.physicalAnchor) {
-                this.physicalAnchor.appendChild(this.contentAnchor);
-            }
-            this.contentAnchor.removeAttribute('position');
-            this.contentAnchor.setAttribute('scale', '1 1 1');
-        }
-
-        this.setAnchorVisible(this.contentAnchor, isRecognized);
-
-        const overlay = document.getElementById('test-marker-overlay');
-        if (overlay) {
-            overlay.classList.toggle('hidden', !isTest);
-        }
+        this.setAnchorVisible(this.physicalAnchor, isRecognized);
 
         if (headerText) {
             if (isTest) {
