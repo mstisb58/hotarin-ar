@@ -3,7 +3,7 @@
  */
 window.ARCore = {
     physicalAnchor: null,
-    virtualAnchor: null,
+    contentAnchor: null,
     outdoorAnchor: null,
     physicalTargetFound: false,
 
@@ -94,10 +94,15 @@ window.ARCore = {
         const diorama = window.AppConfig.diorama;
         if (!scene || !camera) return;
 
-        // マーカー認識用アンカー (実装・テストで共通利用)
+        // マーカー認識用アンカー (MindAR制御用)
         this.physicalAnchor = document.createElement('a-entity');
         this.physicalAnchor.setAttribute('mindar-image-target', 'targetIndex: 0');
         scene.appendChild(this.physicalAnchor);
+
+        // 実際のコンテンツ（ほたりん等）を配置するコンテナ
+        this.contentAnchor = document.createElement('a-entity');
+        this.contentAnchor.setAttribute('id', 'content-anchor');
+        this.physicalAnchor.appendChild(this.contentAnchor);
 
         this.physicalTargetFound = false;
         this.physicalAnchor.addEventListener('targetFound', () => {
@@ -179,7 +184,7 @@ window.ARCore = {
      * 全アンカー内のコンテンツをクリア
      */
     clearScene: function() {
-        [this.physicalAnchor, this.virtualAnchor, this.outdoorAnchor].forEach((anchor) => {
+        [this.contentAnchor, this.outdoorAnchor].forEach((anchor) => {
             while (anchor && anchor.firstChild) {
                 anchor.removeChild(anchor.firstChild);
             }
@@ -209,22 +214,9 @@ window.ARCore = {
      */
     getActiveAnchor: function() {
         if (window.AppMode.isOutdoor()) return this.outdoorAnchor;
-        return this.physicalAnchor;
+        return this.contentAnchor;
     },
 
-    /**
-     * ノードコンテンツを一方のアンカーから他方のアンカーへ移動
-     * @param {HTMLElement} source
-     * @param {HTMLElement} destination
-     */
-    moveSceneContent: function(source, destination) {
-        while (source && destination && source.firstChild) {
-            const child = source.firstChild;
-            destination.appendChild(child);
-            child.setAttribute('visible', 'true');
-            if (child.object3D) child.object3D.visible = true;
-        }
-    },
 
     /**
      * アンカーの表示/非表示制御
@@ -252,7 +244,7 @@ window.ARCore = {
      * isTest ? 画面中央で仮想認識中 : 物理NFTを探索/認識
      */
     applyEnvironmentState: function() {
-        if (window.AppMode.isOutdoor() || !this.physicalAnchor) return;
+        if (window.AppMode.isOutdoor() || !this.physicalAnchor || !this.contentAnchor) return;
 
         const headerText = document.querySelector('#header p');
         const isTest = window.AppMode.isTest();
@@ -260,32 +252,29 @@ window.ARCore = {
         const diorama = window.AppConfig.diorama;
 
         if (isTest) {
-            // テストモード時：マーカーアンカー(physicalAnchor)自体をカメラ前方1.2mに配置
+            // テストモード時：コンテンツコンテナをカメラ直下に配置（MindARの強制カリングを回避）
             const camera = document.querySelector('a-camera');
-            if (camera && this.physicalAnchor.parentNode !== camera) {
-                camera.appendChild(this.physicalAnchor);
+            if (camera && this.contentAnchor.parentNode !== camera) {
+                camera.appendChild(this.contentAnchor);
             }
-            this.physicalAnchor.setAttribute(
+            this.contentAnchor.setAttribute(
                 'position',
                 `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
             );
-            this.physicalAnchor.setAttribute('rotation', '0 0 0');
-            this.physicalAnchor.setAttribute(
+            this.contentAnchor.setAttribute(
                 'scale',
                 `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
             );
         } else {
-            // 実装モード時：マーカーアンカーをscene直下に戻し、MindARの自動認識に任せる
-            const scene = document.querySelector('a-scene');
-            if (scene && this.physicalAnchor.parentNode !== scene) {
-                scene.appendChild(this.physicalAnchor);
+            // 実装モード時：コンテンツコンテナを物理アンカー直下に戻し、MindARに追従させる
+            if (this.contentAnchor.parentNode !== this.physicalAnchor) {
+                this.physicalAnchor.appendChild(this.contentAnchor);
             }
-            this.physicalAnchor.removeAttribute('position');
-            this.physicalAnchor.removeAttribute('rotation');
-            this.physicalAnchor.removeAttribute('scale');
+            this.contentAnchor.removeAttribute('position');
+            this.contentAnchor.setAttribute('scale', '1 1 1');
         }
 
-        this.setAnchorVisible(this.physicalAnchor, isRecognized);
+        this.setAnchorVisible(this.contentAnchor, isRecognized);
 
         const overlay = document.getElementById('test-marker-overlay');
         if (overlay) {
