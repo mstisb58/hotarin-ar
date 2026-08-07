@@ -1,4 +1,28 @@
 /**
+ * A-Frame コンポーネント: テストモード時、画面中央（カメラ視線正面）にアンカーをリアルタイム同期追従させる
+ */
+AFRAME.registerComponent('virtual-anchor-tracker', {
+    tick: function() {
+        if (!window.AppMode || !window.AppMode.isTest() || window.AppMode.isOutdoor()) return;
+        const cameraEl = document.querySelector('a-camera');
+        if (!cameraEl || !cameraEl.object3D) return;
+
+        const diorama = window.AppConfig ? window.AppConfig.diorama : { testAnchorDistanceMeters: 1.2, testAnchorVerticalOffsetMeters: -0.1 };
+        const cameraObj = cameraEl.object3D;
+
+        const offset = new THREE.Vector3(
+            0,
+            diorama.testAnchorVerticalOffsetMeters,
+            -diorama.testAnchorDistanceMeters
+        );
+        offset.applyQuaternion(cameraObj.quaternion);
+
+        this.el.object3D.position.copy(cameraObj.position).add(offset);
+        this.el.object3D.quaternion.copy(cameraObj.quaternion);
+    }
+});
+
+/**
  * ARコア機能：モデル描画・アンカー制御・3D空間オブジェクト配置 (ARCore)
  */
 window.ARCore = {
@@ -111,6 +135,7 @@ window.ARCore = {
             'scale',
             `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
         );
+        this.virtualAnchor.setAttribute('virtual-anchor-tracker', '');
         scene.appendChild(this.virtualAnchor);
 
         this.physicalTargetFound = false;
