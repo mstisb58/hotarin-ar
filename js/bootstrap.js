@@ -36,9 +36,13 @@ window.AppBootstrap = {
      * ローカルストレージからの設定復元
      */
     restoreSettings: function() {
-        // テストモードはページロード時は常にOFF（実装モード）から開始する
-        window.TestMode = false;
-        localStorage.setItem('testMode', 'false');
+        // テストモードは基本的にデフォルトOFF（実装モード）だが、
+        // URLパラメータに ?test=1 がある場合はUIからのリロードとみなしてONにする
+        const urlParams = new URLSearchParams(window.location.search);
+        window.TestMode = urlParams.has('test') && urlParams.get('test') === '1';
+        
+        // UI(設定画面)のトグル状態復元のために localStorage も合わせて更新しておく
+        localStorage.setItem('testMode', window.TestMode ? 'true' : 'false');
 
         window.TestShowBounds = this.readBooleanSetting(
             'testShowBounds',

@@ -379,7 +379,12 @@ window.UIManager = {
 
         // カメラストリーム(getUserMedia)のフック切り替え等が必要なため、常にページをリロードする
         alert('設定を適用するため、ページを再読み込みします。');
-        window.location.reload();
+        // URLパラメータで状態を引き継いでリロード
+        if (checked) {
+            window.location.href = window.location.pathname + '?test=1';
+        } else {
+            window.location.href = window.location.pathname;
+        }
     },
 
     /**
