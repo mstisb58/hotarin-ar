@@ -59,6 +59,16 @@ window.AppConfig = {
         speed: 0.5
     },
 
+    // 周囲 (Surround) ゲームモード用の設定
+    // 周囲を旋回するが、捕まえられる程度の近さにする
+    surroundGame: {
+        flightRadiusMeters: 4.0, // 4m先
+        minHeightMeters: 0.5,    // 子供の手が届きそうな高さ
+        maxHeightMeters: 2.5,
+        modelScale: 1.5,         // 少し大きめ
+        speed: 1.2               // やや速め
+    },
+
     // ゲームモード設定
     game: {
         duration: 10,       // 制限時間（秒）

@@ -120,8 +120,14 @@ window.ARCore = {
         const characterSettings = Object.assign({}, window.AppConfig.characters[definition.id] || {});
 
         // Surroundモード時は行動範囲やスケールを等身大設定で上書きする
-        if (window.AppMode.isSurround() && window.AppConfig.surround) {
-            Object.assign(characterSettings, window.AppConfig.surround);
+        if (window.AppMode.isSurround()) {
+            if (window.UIManager && window.UIManager.experienceMode === 'game' && window.AppConfig.surroundGame) {
+                // Surround ゲーム用設定で上書き (半径4mなど)
+                Object.assign(characterSettings, window.AppConfig.surroundGame);
+            } else if (window.AppConfig.surround) {
+                // Surround 鑑賞用設定で上書き (半径40mなど)
+                Object.assign(characterSettings, window.AppConfig.surround);
+            }
         }
 
         if (characterSettings) {

@@ -202,13 +202,15 @@ window.AppBootstrap = {
         } else {
             camera.setAttribute('position', '0 0 0');
             camera.setAttribute('look-controls', 'enabled: false');
-            scene.setAttribute('cursor', 'rayOrigin: mouse');
-            scene.setAttribute('raycaster', 'objects: .clickable');
             scene.setAttribute(
                 'mindar-image',
                 `imageTargetSrc: ${window.AppConfig.core.masterMind}; uiScanning: no;`
             );
         }
+
+        // 共通：タップ・クリック判定用のカーソルとレイキャスター
+        scene.setAttribute('cursor', 'rayOrigin: mouse');
+        scene.setAttribute('raycaster', 'objects: .clickable');
 
         scene.appendChild(camera);
         return scene;
