@@ -1,22 +1,26 @@
+/**
+ * アプリケーション設定オブジェクト (AppConfig)
+ */
 window.AppConfig = {
-    // アプリケーションバージョン設定（GitHub Pages表示用）
+    // バージョン情報 (GitHub Pages 表示用)
     version: "v4.13",
     commitHash: "9fb0a8a",
     repoUrl: "https://github.com/mstisb58/hotarin-ar",
 
-    // テストモード設定の初期値
+    // テストモードデフォルト設定
     testModeDefaults: {
         showBounds: true
     },
 
-    // MindARではローカル1単位が認識画像の幅。テスト時も同じ寸法感に合わせる。
+    // ジオラマモード (MindAR) 設定
+    // MindARではローカル1単位が認識画像の幅。
     diorama: {
         targetWidthMeters: 0.3,
         testAnchorDistanceMeters: 1.2,
         testAnchorVerticalOffsetMeters: -0.1
     },
 
-    // モーションとデバッグ表示で共有する、NFT幅を1とした相対寸法。
+    // モーションとデバッグ表示で共有する相対寸法設定 (NFT幅1を基準)
     characters: {
         hotarin: {
             dioramaWidth: 1,
@@ -34,19 +38,19 @@ window.AppConfig = {
         }
     },
 
-    // ARコア設定（Ver2相当の基本システム用）
+    // ARコア基本設定
     core: {
-        // システム全体で読み込むキャラ名（フォルダ名）のリスト（ほたりん専用に最適化）
         arsystem: ["hotarin", "hotarin2"],
-        masterMind: "./assets/target.mind", 
-        
-        // ★ 鑑賞モードで表示するキャラクターとその出現数・パラメータ
+        masterMind: "./assets/target.mind",
+
+        // 鑑賞モードで出現するキャラクター・個数
         viewModeTargets: [
             { id: "hotarin", count: 2 }
         ]
     },
 
-    // 実空間ARの基準。ジオラマ1mを100m相当に拡大してYBP周辺へ配置する。
+    // 屋外空間 (GPS AR.js) 設定
+    // ジオラマ1mを100m相当に拡大してYBP周辺へ配置
     outdoor: {
         center: {
             latitude: 35.454332476881056,
@@ -59,15 +63,14 @@ window.AppConfig = {
             maximumAge: 0
         }
     },
-    
-    // ゲーム機能拡張設定（今回追加したゲーム要素用）
+
+    // ゲームモード設定
     game: {
-        duration: 10,       // ゲームの制限時間（秒）
-        maxTargets: 7,      // 同時に出現できる最大数
-        spawnInterval: 600, // ポップ頻度（ミリ秒）
-        
-        // ★ ゲームモードで出現する獲物（ちびほたりんのみ）
-        catchTarget: "hotarin2", 
+        duration: 10,       // 制限時間（秒）
+        maxTargets: 7,      // 同時出現最大数
+        spawnInterval: 600, // ポップ間隔（ミリ秒）
+
+        catchTarget: "hotarin2", // 獲物キャラクターID
         backgroundTargets: [],
 
         hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部",

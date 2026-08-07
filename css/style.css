@@ -286,3 +286,21 @@ body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
     text-decoration: underline;
 }
 
+/* 虫取り網ポップアップアニメーション */
+.bug-net-effect {
+    position: fixed;
+    font-size: 50px;
+    pointer-events: none;
+    z-index: 2000;
+    transition: all 0.3s ease-out;
+    transform: scale(0);
+}
+.bug-net-effect.active {
+    transform: scale(1) rotate(-45deg);
+    opacity: 1;
+}
+.bug-net-effect.fade {
+    transform: scale(1.2) rotate(0deg);
+    opacity: 0;
+}
+

@@ -1,7 +1,13 @@
-// ARライブラリ、カメラ、A-Frameシーンの起動を担当する。
+/**
+ * ARライブラリ、カメラ、A-Frameシーンの初期化・ライフサイクル管理 (AppBootstrap)
+ */
 window.AppBootstrap = {
+    /** @type {MediaStream | null} */
     activeCameraStream: null,
 
+    /**
+     * アプリ起動メイン処理
+     */
     init: async function() {
         this.restoreSettings();
         this.installSharedCamera();
@@ -15,14 +21,20 @@ window.AppBootstrap = {
             await this.startSharedCamera();
 
             const scene = this.createScene();
-            document.getElementById('scene-container').appendChild(scene);
+            const container = document.getElementById('scene-container');
+            if (container) container.appendChild(scene);
+
             window.dispatchEvent(new CustomEvent('ARSceneReady'));
         } catch (error) {
             console.error('ARシーンの起動に失敗しました。', error);
-            document.querySelector('#header p').innerText = 'ARの起動に失敗しました';
+            const headerText = document.querySelector('#header p');
+            if (headerText) headerText.innerText = 'ARの起動に失敗しました';
         }
     },
 
+    /**
+     * ローカルストレージからの設定復元
+     */
     restoreSettings: function() {
         window.TestMode = this.readBooleanSetting('testMode', false);
         window.TestShowBounds = this.readBooleanSetting(
@@ -31,11 +43,19 @@ window.AppBootstrap = {
         );
     },
 
+    /**
+     * @param {string} key
+     * @param {boolean} defaultValue
+     * @returns {boolean}
+     */
     readBooleanSetting: function(key, defaultValue) {
         const storedValue = localStorage.getItem(key);
         return storedValue === null ? defaultValue : storedValue === 'true';
     },
 
+    /**
+     * カメラストリームを統一して再利用可能にするラッパーのインストール
+     */
     installSharedCamera: function() {
         if (!navigator.mediaDevices?.getUserMedia) return;
 
@@ -65,6 +85,11 @@ window.AppBootstrap = {
         };
     },
 
+    /**
+     * スクリプトの動的ロード
+     * @param {string} src
+     * @returns {Promise<void>}
+     */
     loadScript: function(src) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -75,9 +100,14 @@ window.AppBootstrap = {
         });
     },
 
+    /**
+     * モードに応じたARライブラリの動的ロード
+     * @returns {Promise<void>}
+     */
     loadARLibrary: function() {
+        const headerText = document.querySelector('#header p');
         if (window.AppMode.isOutdoor()) {
-            document.querySelector('#header p').innerText = 'GPSを取得中...';
+            if (headerText) headerText.innerText = 'GPSを取得中...';
             return this.loadScript(
                 'https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js'
             );
@@ -87,6 +117,9 @@ window.AppBootstrap = {
         );
     },
 
+    /**
+     * 背景ビデオ要素へのカメラストリーム接続
+     */
     startSharedCamera: async function() {
         const video = document.getElementById('shared-webcam');
         if (!video || !navigator.mediaDevices?.getUserMedia) return;
@@ -101,6 +134,10 @@ window.AppBootstrap = {
         }
     },
 
+    /**
+     * A-Frameシーン要素の生成
+     * @returns {HTMLElement}
+     */
     createScene: function() {
         const scene = document.createElement('a-scene');
         const camera = document.createElement('a-camera');
@@ -135,13 +172,21 @@ window.AppBootstrap = {
         return scene;
     },
 
+    /**
+     * 空間切り替えボタンの見た目更新
+     */
     updateSpaceSwitchButton: function() {
         const button = document.getElementById('gps-switch-btn');
+        if (!button) return;
+
         const outdoor = window.AppMode.isOutdoor();
         button.innerText = outdoor ? 'ジオラマモード' : '外で見てみる！ (GPS)';
         button.classList.toggle('gps-mode-active', outdoor);
     },
 
+    /**
+     * ジオラマモード ↔ 外で見る(GPS)モードのトグル切り替え
+     */
     switchSpace: function() {
         window.location.search = window.AppMode.isOutdoor() ? '?mode=diorama' : '?mode=gps';
     }
