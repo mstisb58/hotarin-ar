@@ -50,11 +50,11 @@ window.AppConfig = {
     },
 
     // 等身大・周囲 (Surround) モード設定
-    // 自分の周り (半径8mなど、遠く) に等身大のキャラクターを飛ばす
+    // 自分の周り (半径40mなど、かなり遠く) に等身大のキャラクターを飛ばす
     surround: {
-        flightRadiusMeters: 8.0,
-        minHeightMeters: 2.0,
-        maxHeightMeters: 5.0,
+        flightRadiusMeters: 40.0,
+        minHeightMeters: 5.0,
+        maxHeightMeters: 15.0,
         modelScale: 10.0, // 等身大
         speed: 0.5
     },

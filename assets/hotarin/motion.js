@@ -89,8 +89,9 @@ AFRAME.registerComponent('hotarin-logic', {
             const dz = nz - pz;
             const dy = ny - py;
             
-            // ほたりんのモデル初期状態によってオフセットが必要な場合があるが、まずは進行方向へ
-            const yaw = Math.atan2(dx, dz);
+            // モデルのデフォルトの向きによっては背中を向けてしまうため、180度(Math.PI) または 90度反転させる
+            // ユーザー指摘「背を向けて回っている」より、180度反転させて進行方向へ向ける
+            const yaw = Math.atan2(dx, dz) + Math.PI;
             // 上下への傾き (ピッチ)
             const pitch = -Math.atan2(dy, Math.sqrt(dx*dx + dz*dz));
             // 揺らぎ (ロール)
