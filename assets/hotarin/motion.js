@@ -1,7 +1,6 @@
 AFRAME.registerComponent('hotarin-logic', {
     schema: {
-        flightWidthMeters: { type: 'number', default: 0.4 },
-        flightDepthMeters: { type: 'number', default: 0.4 },
+        flightRadiusMeters: { type: 'number', default: 0.2 },
         minHeightMeters: { type: 'number', default: 0.05 },
         maxHeightMeters: { type: 'number', default: 0.35 },
         modelScale: { type: 'number', default: 0.6 },
@@ -19,10 +18,9 @@ AFRAME.registerComponent('hotarin-logic', {
         this.el.parentNode.appendChild(this.debugVisual);
     },
 
-    // 内部座標スケールへの変換係数 (AR.js GPS時は 1m=1。MindAR時はターゲットの物理幅で割る)
+    // 内部座標スケールへの変換係数
     getScaleFactor: function() {
         if (window.AR_MODE === 'gps') return 1;
-        // 例: ターゲットが 0.3m なら、現実の 1m は 内部座標の 1 / 0.3 = 3.333... となる
         const targetWidth = window.AppConfig?.diorama?.targetWidthMeters || 1.0;
         return 1.0 / targetWidth;
     },
@@ -35,11 +33,12 @@ AFRAME.registerComponent('hotarin-logic', {
             const zCenter = ((d.maxHeightMeters + d.minHeightMeters) / 2) * scale;
 
             this.debugVisual.setAttribute('geometry', {
-                primitive: 'box',
-                width: d.flightWidthMeters * scale,
-                height: d.flightDepthMeters * scale,
-                depth: zRange
+                primitive: 'cylinder',
+                radius: d.flightRadiusMeters * scale,
+                height: zRange
             });
+            // A-FrameのcylinderはY軸方向（縦）に伸びるため、ARのZ軸方向に向けるため90度回転
+            this.debugVisual.setAttribute('rotation', '90 0 0');
             this.debugVisual.setAttribute('material', {
                 color: d.debugColor,
                 wireframe: true,
@@ -59,21 +58,27 @@ AFRAME.registerComponent('hotarin-logic', {
         const timeOffset = d.seed * 1234.5; 
         const t = (((Date.now() / 1000) + timeOffset) % 100000) * d.speed;
 
-        // 内部座標空間での半径
-        const lx = (d.flightWidthMeters * scale) / 2;
-        const ly = (d.flightDepthMeters * scale) / 2;
+        // 円筒形の内部座標サイズ
+        const rMax = d.flightRadiusMeters * scale;
         const cz = ((d.maxHeightMeters + d.minHeightMeters) / 2) * scale;
         const rz = ((d.maxHeightMeters - d.minHeightMeters) / 2) * scale;
 
-        // XY平面は楕円/8の字軌道、Zは上下動
-        const px = ((Math.sin(t * 0.6) + Math.cos(t * 1.2)) / 2) * lx;
-        const py = ((Math.sin(t * 1.1) + Math.cos(t * 0.5)) / 2) * ly;
+        // 極座標 (半径と角度) を使って円筒内に収める
+        // 半径は rMax 内でゆらぐ
+        const radius = (0.5 + 0.5 * Math.sin(t * 0.7)) * rMax;
+        // 角度は時間と共に回転しつつ、少し揺らぐ
+        const theta = t * 0.8 + Math.sin(t * 0.5);
+
+        const px = radius * Math.cos(theta);
+        const py = radius * Math.sin(theta);
         const pz = cz + ((Math.sin(t * 0.8) + Math.cos(t * 0.4)) / 2) * rz;
 
         // 進行方向の計算
         const nt = t + 0.02;
-        const nx = ((Math.sin(nt * 0.6) + Math.cos(nt * 1.2)) / 2) * lx;
-        const ny = ((Math.sin(nt * 1.1) + Math.cos(nt * 0.5)) / 2) * ly;
+        const nRadius = (0.5 + 0.5 * Math.sin(nt * 0.7)) * rMax;
+        const nTheta = nt * 0.8 + Math.sin(nt * 0.5);
+        const nx = nRadius * Math.cos(nTheta);
+        const ny = nRadius * Math.sin(nTheta);
         const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
 
         this.el.object3D.position.set(px, py, pz);

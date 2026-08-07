@@ -23,20 +23,18 @@ window.AppConfig = {
     // キャラクターの基本設定 (行動範囲などは実際の現実空間のメートル単位で指定)
     characters: {
         hotarin: {
-            flightWidthMeters: 0.4, // 水平方向の飛行範囲の幅 (0.4 = 40cm)
-            flightDepthMeters: 0.4, // 水平方向の飛行範囲の奥行 (0.4 = 40cm)
-            minHeightMeters: 0.05,  // 飛行する最小の高さ (0.05 = 5cm)
-            maxHeightMeters: 0.35,  // 飛行する最大の高さ (0.35 = 35cm) -> 高さ30cmの円筒形範囲
-            modelScale: 0.6,        // 3Dモデル自体の表示サイズ倍率
-            speed: 0.5              // 鑑賞用：ゆっくり優雅に飛ぶ
+            flightRadiusMeters: 0.2, // 飛行範囲の半径 (0.2 = 20cm / 直径40cmの円筒)
+            minHeightMeters: 0.05,   // 飛行する最小の高さ (0.05 = 5cm)
+            maxHeightMeters: 0.35,   // 飛行する最大の高さ (0.35 = 35cm)
+            modelScale: 0.6,         // 3Dモデル自体の表示サイズ倍率
+            speed: 0.5               // 鑑賞用：ゆっくり優雅に飛ぶ
         },
         hotarin2: {
-            flightWidthMeters: 0.4, // ゲームモード用も同じ行動範囲
-            flightDepthMeters: 0.4,
+            flightRadiusMeters: 0.2, // ゲームモード用も同じ円筒範囲
             minHeightMeters: 0.05,
             maxHeightMeters: 0.35,
-            modelScale: 0.2,        // ちびほたりん (さらに小さく)
-            speed: 1.6              // 早すぎたため少しマイルドに調整
+            modelScale: 0.2,         // ちびほたりん (さらに小さく)
+            speed: 1.6               // 早すぎたため少しマイルドに調整
         }
     },
 

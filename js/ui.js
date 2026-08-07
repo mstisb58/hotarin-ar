@@ -452,8 +452,7 @@ window.UIManager = {
             : window.AppConfig.core.viewModeTargets[0].id;
         const character = window.AppConfig.characters[characterId];
         const targetWidth = window.AppConfig.diorama.targetWidthMeters;
-        const rangeWidth = character.flightWidthMeters.toFixed(2);
-        const rangeDepth = character.flightDepthMeters.toFixed(2);
+        const rangeRadius = character.flightRadiusMeters.toFixed(2);
         const minHeight = character.minHeightMeters.toFixed(3);
         const maxHeight = character.maxHeightMeters.toFixed(3);
 
@@ -462,7 +461,7 @@ window.UIManager = {
             <div><b>Mode:</b> ${modeStr}</div>
             <div><b>Target State:</b> ${recognitionLabels[recognitionState]}</div>
             <div><b>NFT Width:</b> ${targetWidth.toFixed(2)}m</div>
-            <div style="margin-top:4px;"><b>Flight Range:</b> ${rangeWidth}m × ${rangeDepth}m</div>
+            <div style="margin-top:4px;"><b>Flight Radius:</b> ${rangeRadius}m (Dia ${rangeRadius * 2}m)</div>
             <div><b>Height:</b> ${minHeight}m – ${maxHeight}m</div>
             <div><b>Model Scale:</b> ${character.modelScale} × NFT basis</div>
         `;

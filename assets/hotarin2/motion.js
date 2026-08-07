@@ -1,7 +1,6 @@
 AFRAME.registerComponent('hotarin2-logic', {
     schema: {
-        flightWidthMeters: { type: 'number', default: 0.4 },
-        flightDepthMeters: { type: 'number', default: 0.4 },
+        flightRadiusMeters: { type: 'number', default: 0.2 },
         minHeightMeters: { type: 'number', default: 0.05 },
         maxHeightMeters: { type: 'number', default: 0.35 },
         modelScale: { type: 'number', default: 0.4 },
@@ -19,7 +18,7 @@ AFRAME.registerComponent('hotarin2-logic', {
         this.el.parentNode.appendChild(this.debugVisual);
     },
 
-    // 内部座標スケールへの変換係数 (AR.js GPS時は 1m=1。MindAR時はターゲットの物理幅で割る)
+    // 内部座標スケールへの変換係数
     getScaleFactor: function() {
         if (window.AR_MODE === 'gps') return 1;
         const targetWidth = window.AppConfig?.diorama?.targetWidthMeters || 1.0;
@@ -34,11 +33,11 @@ AFRAME.registerComponent('hotarin2-logic', {
             const zCenter = ((d.maxHeightMeters + d.minHeightMeters) / 2) * scale;
 
             this.debugVisual.setAttribute('geometry', {
-                primitive: 'box',
-                width: d.flightWidthMeters * scale,
-                height: d.flightDepthMeters * scale,
-                depth: zRange
+                primitive: 'cylinder',
+                radius: d.flightRadiusMeters * scale,
+                height: zRange
             });
+            this.debugVisual.setAttribute('rotation', '90 0 0');
             this.debugVisual.setAttribute('material', {
                 color: d.debugColor,
                 wireframe: true,
@@ -58,21 +57,25 @@ AFRAME.registerComponent('hotarin2-logic', {
         const timeOffset = d.seed * 1234.5;
         const t = (((Date.now() / 1000) + timeOffset) % 100000) * d.speed;
 
-        // 内部座標空間での半径
-        const lx = (d.flightWidthMeters * scale) / 2;
-        const ly = (d.flightDepthMeters * scale) / 2;
+        // 円筒形の内部座標サイズ
+        const rMax = d.flightRadiusMeters * scale;
         const cz = ((d.maxHeightMeters + d.minHeightMeters) / 2) * scale;
         const rz = ((d.maxHeightMeters - d.minHeightMeters) / 2) * scale;
 
-        // 動きを複雑で不規則にする（サイン波の係数を複雑化）
-        const px = ((Math.sin(t * 1.6) + Math.cos(t * 2.2)) / 2) * lx;
-        const py = ((Math.sin(t * 2.1) + Math.cos(t * 1.5)) / 2) * ly;
+        // 動きを複雑で不規則にする（ゲーム用なので不規則に飛ぶ）
+        const radius = (0.3 + 0.7 * Math.abs(Math.sin(t * 1.3))) * rMax;
+        const theta = t * 1.5 + Math.sin(t * 0.9);
+
+        const px = radius * Math.cos(theta);
+        const py = radius * Math.sin(theta);
         const pz = cz + ((Math.sin(t * 1.8) + Math.cos(t * 1.4)) / 2) * rz;
 
         // 進行方向の計算
         const nt = t + 0.02;
-        const nx = ((Math.sin(nt * 1.6) + Math.cos(nt * 2.2)) / 2) * lx;
-        const ny = ((Math.sin(nt * 2.1) + Math.cos(nt * 1.5)) / 2) * ly;
+        const nRadius = (0.3 + 0.7 * Math.abs(Math.sin(nt * 1.3))) * rMax;
+        const nTheta = nt * 1.5 + Math.sin(nt * 0.9);
+        const nx = nRadius * Math.cos(nTheta);
+        const ny = nRadius * Math.sin(nTheta);
         const angle = Math.atan2(ny - py, nx - px) * 180 / Math.PI;
 
         this.el.object3D.position.set(px, py, pz);
