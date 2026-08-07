@@ -78,7 +78,7 @@ window.AppConfig = {
         catchTarget: "hotarin2", // 獲物キャラクターID
         backgroundTargets: [],
 
-        hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部",
+        hashtags: "#横浜ビジネスパーク夏祭り #ほたりん #YBPプラモ部 #楽園夏祭",
         resultMessages: [
             { min: 20, text: "すごい！虫取り名人ですね♪" },
             { min: 10, text: "よくできました！あともう一息！" },

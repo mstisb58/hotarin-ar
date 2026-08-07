@@ -167,25 +167,42 @@ window.UIManager = {
             : 'rgba(255, 100, 100, 0.9)';
     },
 
-    /**
-     * リザルト画面の表示
-     * @param {number} score
-     */
     showResultScreen: function(score) {
         const els = this.getElements();
         if (!els.resultScreen) return;
+        this.screenMode = 'result';
 
-        if (els.resultScore) els.resultScore.innerText = `${score} 匹捕まえた！`;
+        // タイトルやボタンの要素を取得
+        const titleEl = els.resultScreen.querySelector('h2');
+        const retryBtn = els.resultScreen.querySelector('button[onclick="startGameMode()"]');
+        const viewBtn = els.resultScreen.querySelector('button[onclick="startViewMode()"]');
+        const shareTitle = els.resultScreen.querySelector('.share-section p');
 
-        const msgs = window.AppConfig.game.resultMessages;
-        let msg = msgs[msgs.length - 1].text;
-        for (let i = 0; i < msgs.length; i++) {
-            if (score >= msgs[i].min) {
-                msg = msgs[i].text;
-                break;
+        if (this.experienceMode === 'game') {
+            if (titleEl) titleEl.innerText = '結果発表！';
+            if (retryBtn) { retryBtn.style.display = 'inline-block'; retryBtn.innerText = 'リセットして再挑戦'; }
+            if (viewBtn) viewBtn.innerText = '鑑賞モードへ戻る';
+            if (shareTitle) shareTitle.innerText = '結果画像をシェアする';
+            if (els.resultScore) els.resultScore.innerText = `${score} 匹捕まえた！`;
+
+            const msgs = window.AppConfig.game.resultMessages;
+            let msg = msgs[msgs.length - 1].text;
+            for (let i = 0; i < msgs.length; i++) {
+                if (score >= msgs[i].min) {
+                    msg = msgs[i].text;
+                    break;
+                }
             }
+            if (els.resultMessage) els.resultMessage.innerText = msg;
+        } else {
+            if (titleEl) titleEl.innerText = 'AR写真';
+            if (retryBtn) retryBtn.style.display = 'none'; // 鑑賞モード時は非表示
+            if (viewBtn) viewBtn.innerText = 'ARに戻る';
+            if (shareTitle) shareTitle.innerText = '写真をシェアする';
+            if (els.resultScore) els.resultScore.innerText = '素敵な写真が撮れました！';
+            if (els.resultMessage) els.resultMessage.innerText = 'SNSでシェアしてね♪';
         }
-        if (els.resultMessage) els.resultMessage.innerText = msg;
+        
         els.resultScreen.classList.remove('hidden');
     },
 
@@ -225,23 +242,33 @@ window.UIManager = {
 
         ctx.drawImage(scene.canvas, 0, 0, canvas.width, canvas.height);
 
-        // バナー背景の描画
-        const bgHeight = 160;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.fillRect(0, canvas.height - bgHeight, canvas.width, bgHeight);
+        const isGame = this.experienceMode === 'game';
 
-        // スコアテキストの描画
-        ctx.fillStyle = '#ff9800';
-        const fontSize = Math.min(canvas.width * 0.08, 50);
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(`ほたりんを ${score}匹 捕まえた！`, canvas.width / 2, canvas.height - 90);
+        // バナー背景の描画
+        if (isGame) {
+            const bgHeight = 160;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillRect(0, canvas.height - bgHeight, canvas.width, bgHeight);
+
+            // スコアテキストの描画
+            ctx.fillStyle = '#ff9800';
+            const fontSize = Math.min(canvas.width * 0.08, 50);
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(`ほたりんを ${score}匹 捕まえた！`, canvas.width / 2, canvas.height - 90);
+        } else {
+            // 写真撮影のみの場合は控えめな背景に
+            const bgHeight = 80;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillRect(0, canvas.height - bgHeight, canvas.width, bgHeight);
+        }
 
         // ハッシュタグの描画
         const hashSize = Math.min(canvas.width * 0.04, 24);
         ctx.font = `bold ${hashSize}px sans-serif`;
         ctx.fillStyle = '#333333';
-        ctx.fillText(window.AppConfig.game.hashtags, canvas.width / 2, canvas.height - 35);
+        ctx.textAlign = 'center';
+        ctx.fillText(window.AppConfig.game.hashtags, canvas.width / 2, canvas.height - (isGame ? 35 : 30));
 
         canvas.toBlob((blob) => {
             if (!blob) return;
@@ -255,16 +282,19 @@ window.UIManager = {
      * Web Share API または ダウンロードによるSNSシェア
      */
     shareTo: function() {
+        const isGame = this.experienceMode === 'game';
         const score = window.GameModule ? window.GameModule.score : 0;
         const hashtags = window.AppConfig.game.hashtags;
-        const text = `ARでほたりんを ${score}匹 捕まえたよ！\n${hashtags}`;
+        const text = isGame 
+            ? `ARでほたりんを ${score}匹 捕まえたよ！\n${hashtags}`
+            : `ARでほたりんと一緒に写真を撮ったよ！\n${hashtags}`;
         const url = window.location.href;
 
         if (navigator.canShare && this.resultImageBlob) {
-            const file = new File([this.resultImageBlob], `hotarin_result_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            const file = new File([this.resultImageBlob], `hotarin_photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
             if (navigator.canShare({ files: [file] })) {
                 navigator.share({
-                    title: 'ほたりん虫取りゲーム',
+                    title: 'ほたりんAR写真',
                     text: text,
                     url: url,
                     files: [file]
@@ -275,7 +305,7 @@ window.UIManager = {
 
         if (this.resultImageUrl) {
             const link = document.createElement('a');
-            link.download = `hotarin_result_${Date.now()}.jpg`;
+            link.download = `hotarin_photo_${Date.now()}.jpg`;
             link.href = this.resultImageUrl;
             link.click();
             alert('結果画像をダウンロードしました。\nお好きなSNSを開いて、画像を添付して投稿してください！\n\n【おすすめハッシュタグ】\n' + hashtags);
@@ -301,26 +331,11 @@ window.UIManager = {
     },
 
     /**
-     * 写真撮影 (ARスクショ保存)
+     * 写真撮影 (ARスクショ保存し、リザルト・シェア画面へ遷移)
      */
     takePhoto: function() {
-        const scene = document.querySelector('a-scene');
-        const video = document.querySelector('video');
-        if (!video || !scene || !scene.renderer) return;
-
-        scene.renderer.render(scene.object3D, scene.camera);
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.drawImage(scene.canvas, 0, 0, canvas.width, canvas.height);
-
-        const link = document.createElement('a');
-        link.download = `ar-capture-${Date.now()}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
+        this.captureResultImage(0);
+        this.showResultScreen(0);
     },
 
     /**
