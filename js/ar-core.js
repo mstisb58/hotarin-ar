@@ -1,28 +1,4 @@
 /**
- * A-Frame コンポーネント: テストモード時、画面中央（カメラ視線正面）にアンカーをリアルタイム同期追従させる
- */
-AFRAME.registerComponent('virtual-anchor-tracker', {
-    tick: function() {
-        if (!window.AppMode || !window.AppMode.isTest() || window.AppMode.isOutdoor()) return;
-        const cameraEl = document.querySelector('a-camera');
-        if (!cameraEl || !cameraEl.object3D) return;
-
-        const diorama = window.AppConfig ? window.AppConfig.diorama : { testAnchorDistanceMeters: 1.2, testAnchorVerticalOffsetMeters: -0.1 };
-        const cameraObj = cameraEl.object3D;
-
-        const offset = new THREE.Vector3(
-            0,
-            diorama.testAnchorVerticalOffsetMeters,
-            -diorama.testAnchorDistanceMeters
-        );
-        offset.applyQuaternion(cameraObj.quaternion);
-
-        this.el.object3D.position.copy(cameraObj.position).add(offset);
-        this.el.object3D.quaternion.copy(cameraObj.quaternion);
-    }
-});
-
-/**
  * ARコア機能：モデル描画・アンカー制御・3D空間オブジェクト配置 (ARCore)
  */
 window.ARCore = {
@@ -118,25 +94,23 @@ window.ARCore = {
         const diorama = window.AppConfig.diorama;
         if (!scene || !camera) return;
 
-        // 1. 実マーカー認識用アンカー
+        // 1. 実マーカー認識用アンカー (実NFT用)
         this.physicalAnchor = document.createElement('a-entity');
         this.physicalAnchor.setAttribute('mindar-image-target', 'targetIndex: 0');
         scene.appendChild(this.physicalAnchor);
 
-        // 2. 仮想マーカー認識用アンカー (a-scene直下に配置し、実マーカーと100%同じレンダーパスで描画させる)
+        // 2. 仮想マーカー認識用アンカー (テストモード用: カメラ前方1.2mに置いた状態をモック)
         this.virtualAnchor = document.createElement('a-entity');
         this.virtualAnchor.setAttribute('id', 'virtual-anchor');
         this.virtualAnchor.setAttribute(
             'position',
             `0 ${diorama.testAnchorVerticalOffsetMeters} -${diorama.testAnchorDistanceMeters}`
         );
-        this.virtualAnchor.setAttribute('rotation', '0 0 0');
         this.virtualAnchor.setAttribute(
             'scale',
             `${diorama.targetWidthMeters} ${diorama.targetWidthMeters} ${diorama.targetWidthMeters}`
         );
-        this.virtualAnchor.setAttribute('virtual-anchor-tracker', '');
-        scene.appendChild(this.virtualAnchor);
+        camera.appendChild(this.virtualAnchor);
 
         this.physicalTargetFound = false;
         this.physicalAnchor.addEventListener('targetFound', () => {
@@ -163,7 +137,6 @@ window.ARCore = {
         const gpsEntity = document.createElement('a-entity');
 
         gpsEntity.setAttribute('gps-new-entity-place', `latitude: ${latitude}; longitude: ${longitude}`);
-        // ジオラマのXY平面を地面へ、ローカルZを実空間の高さへ対応させる
         gpsEntity.setAttribute('rotation', '-90 0 0');
         gpsEntity.setAttribute('scale', `${worldScale} ${worldScale} ${worldScale}`);
 
@@ -276,16 +249,11 @@ window.ARCore = {
     setAnchorVisible: function(anchor, visible) {
         if (!anchor) return;
         anchor.setAttribute('visible', String(visible));
-        if (anchor.object3D) {
-            anchor.object3D.visible = visible;
-            anchor.object3D.traverse((node) => {
-                node.visible = visible;
-            });
-        }
+        if (anchor.object3D) anchor.object3D.visible = visible;
     },
 
     /**
-     * テスト/実装の環境状態の適用
+     * テスト/実装の環境状態の適用 (テスト時は仮想アンカーを即時有効化)
      */
     applyEnvironmentState: function() {
         if (window.AppMode.isOutdoor() || !this.physicalAnchor || !this.virtualAnchor) return;
@@ -300,7 +268,7 @@ window.ARCore = {
         this.setAnchorVisible(this.virtualAnchor, useVirtualAnchor);
         this.moveSceneContent(sourceAnchor, targetAnchor);
 
-        // テストモード時は画面中央のマーカーガイド（400x400px）をオーバーレイ表示
+        // テストモード時は画面中央のマーカーガイド（400x400px）を表示
         const overlay = document.getElementById('test-marker-overlay');
         if (overlay) {
             overlay.classList.toggle('hidden', !useVirtualAnchor);
