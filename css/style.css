@@ -307,7 +307,7 @@ body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
 /* テストモード用 画面中央 400x400px マーカーオーバーレイ */
 #test-marker-overlay {
     position: fixed;
-    top: calc(50% + 40px); /* ヘッダー分考慮した画面中央 */
+    top: 50%; /* 画面完全中央 */
     left: 50%;
     transform: translate(-50%, -50%);
     width: min(400px, 80vw);
