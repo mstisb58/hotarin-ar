@@ -253,40 +253,42 @@ window.ARCore = {
     },
 
     /**
-     * テスト/実装の環境状態の適用 (テスト時は仮想アンカーを即時有効化)
+     * マーカー認識状態の判定 (簡素な条件分岐)
+     * テストモード時: 画面中央で仮想認識中
+     * 実装モード時: 物理NFTを探索 / 認識
+     */
+    isTargetRecognized: function() {
+        if (window.AppMode.isOutdoor()) return true;
+        return window.AppMode.isTest() ? true : this.physicalTargetFound;
+    },
+
+    /**
+     * テスト/実装の環境状態の適用
+     * isTest ? 画面中央で認識中 : 物理NFTを探索/認識
      */
     applyEnvironmentState: function() {
         if (window.AppMode.isOutdoor() || !this.physicalAnchor || !this.virtualAnchor) return;
 
         const headerText = document.querySelector('#header p');
-        const useVirtualAnchor = window.AppMode.isTest();
-        const usePhysicalAnchor = !useVirtualAnchor && this.physicalTargetFound;
-        const targetAnchor = useVirtualAnchor ? this.virtualAnchor : this.physicalAnchor;
-        const sourceAnchor = useVirtualAnchor ? this.physicalAnchor : this.virtualAnchor;
+        const isTest = window.AppMode.isTest();
+        const isRecognized = isTest || this.physicalTargetFound;
 
-        // テストモード時は MindAR システムにマーカー認識済みであることを認識させる
-        if (useVirtualAnchor && this.physicalAnchor) {
-            try {
-                this.physicalAnchor.emit('targetFound', null, false);
-            } catch (e) {
-                // ignore
-            }
-        }
+        const activeAnchor = isTest ? this.virtualAnchor : this.physicalAnchor;
+        const inactiveAnchor = isTest ? this.physicalAnchor : this.virtualAnchor;
 
-        this.setAnchorVisible(this.physicalAnchor, usePhysicalAnchor);
-        this.setAnchorVisible(this.virtualAnchor, useVirtualAnchor);
-        this.moveSceneContent(sourceAnchor, targetAnchor);
+        this.setAnchorVisible(activeAnchor, isRecognized);
+        this.setAnchorVisible(inactiveAnchor, false);
+        this.moveSceneContent(inactiveAnchor, activeAnchor);
 
-        // テストモード時は画面中央のマーカーガイド（400x400px）を表示
         const overlay = document.getElementById('test-marker-overlay');
         if (overlay) {
-            overlay.classList.toggle('hidden', !useVirtualAnchor);
+            overlay.classList.toggle('hidden', !isTest);
         }
 
         if (headerText) {
-            if (useVirtualAnchor) {
+            if (isTest) {
                 headerText.innerText = 'ジオラマ表示中 (仮想認識)';
-            } else if (usePhysicalAnchor) {
+            } else if (this.physicalTargetFound) {
                 headerText.innerText = 'ジオラマが起動しました！';
             } else {
                 headerText.innerText = 'ターゲットを映してね！';
